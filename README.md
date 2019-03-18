@@ -8,3 +8,6 @@ Currently works directly only for csv-files exported from the Serato DJ Pro soft
 When I complete some of the still missing features, I will freeze it into applications for both Win and MacOS using _PyInstaller_.
 
 Also has the option to autofill the imported playlist to Bassoradio's database, which saves me a lot of time and manual work when I don't have to input every song manually through the not so great web interface. Implemented in a somewhat hacky way with _Selenium_, as I could not get it working directly with HTTP posts using the _requests_ package.
+
+#### Looks like:
+![alt text](https://github.com/Esgrove/playlistTool/blob/master/playlistformatter.png)
