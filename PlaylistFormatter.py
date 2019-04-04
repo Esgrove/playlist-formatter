@@ -30,8 +30,6 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QFileDialog, QStyle, QTreeWi
                             QMainWindow, QMenuBar, QAbstractItemView, QGridLayout, QAction, QMessageBox,
                             QDesktopWidget, QPushButton, QListWidget, QFontDialog, QLineEdit, QLabel, QTreeWidget)
 
-colorama.init()
-
 # ==================================================================================
 
 class PlaylistFormatter:
@@ -44,7 +42,11 @@ class PlaylistFormatter:
         self.filename = ""
         self.filetype = ""
         self.playlist = []
-        self.driverPath = ""
+        self.driver = None
+        if platform.system().lower() == "darwin": # MacOS
+            self.driverPath = "/Users/Dropbox/CODE/webdriver/chromedriver"
+        else:
+            self.driverPath = "D:/Dropbox/CODE/webdriver/chromedriver.exe"
 
     # ------------------------------------------------------------------------------
 
@@ -52,7 +54,7 @@ class PlaylistFormatter:
         if not os.path.isfile(filename):
             raise RuntimeError("File does not exist.")
         
-        print("reading playlist {}\n".format(setColor(filename, colorama.Fore.YELLOW)))
+        print("reading playlist {}\n".format(getColor(filename, colorama.Fore.YELLOW)))
         self.filepath, self.filename = os.path.split(filename)
         self.filename, self.filetype = os.path.splitext(self.filename)
         self.filetype = self.filetype.strip().lower()
@@ -92,12 +94,24 @@ class PlaylistFormatter:
                     if index == 1:
                         startTime = rowData["start time"]
 
-                    if " - " in rowData["name"]:
-                        rowData["name"] = rowData["name"].replace(" - ", " (") + ")"
+                    title = rowData["name"]
+                    if " - " in title:
+                        title = title.replace(" - ", " (") + ")"
+
+                    title = title.replace("(Clean)", "").replace("(clean)", "")
+                    title = title.replace("(Dirty)", "").replace("(dirty)", "")
+                    title = title.replace("(Original Mix)", "").replace("(original Mix)", "")
+                    title = title.replace("(Dirty-", "(").replace("(dirty-", "(")
+                    title = title.replace("(Clean-", "(").replace("(clean-", "(")
+                    title = title.replace(" )", ")")
+                    title = title.replace("( ", "(")
+
+                    # split at all whitespace chars and recombine -> remove extra spaces and linebreaks...
+                    title = " ".join(title.split())
 
                     playTime = rowData["start time"] - startTime
                     songData = {"artist": titlecase(rowData["artist"]), 
-                                "song": titlecase(rowData["name"]), 
+                                "song": titlecase(title),
                                 "time": playTime,
                                 "playtime": playTime - previousTime,
                                 "starttime": rowData["start time"]}
@@ -105,6 +119,7 @@ class PlaylistFormatter:
                     if songData["playtime"] < timedelta(seconds=60):
                         songData["playtime"] = timedelta(seconds=60)
 
+                    # sum duplicate song playtimes
                     if playlistIndex and playlist[playlistIndex-1]["song"] == songData["song"] and playlist[playlistIndex-1]["artist"] == songData["artist"]:
                         playlist[playlistIndex-1]["playtime"] += songData["playtime"]
 
@@ -215,109 +230,102 @@ class PlaylistFormatter:
 
     # ------------------------------------------------------------------------------
 
-    def fillBasso(self, showName, date):
+    def fillBasso(self, show, startIndex = 0):
         """Fill radioshow playlist to Bassoradio database using Selenium"""
         printBold("Uploading playlist to dj.basso.fi...", colorama.Fore.RED)
         startTime = timer()
-        show = "{} 20:00-22:00 LIVE {}".format(date, showName)
 
-        # open webdriver and login
-        driver = webdriver.Chrome(executable_path = self.driverPath)
-        driver.get("theBassoradioWebInterfaceAddress") #censored...
+        if len(self.playlist) <= startIndex:
+            print("Index not valid.")
+            return
+
+        self.openBassoDriver(show)
 
         print("\nFilling playlist for show:")
         printColor(show, colorama.Fore.CYAN)
 
-        # clear current show
-        driver.find_element_by_id("broadcast-title-clear").click()
-
-        # select correct show
-        select = Select(driver.find_element_by_css_selector("[ng-model*='play.broadcast']"))
-        select.select_by_visible_text(show)
-
         # input song data
         printColor("\nAdding songs...", colorama.Fore.MAGENTA)
-        for index, row in enumerate(self.playlist):
+        for index, row in enumerate(self.playlist[startIndex:]):
             inputIndex = 0
+            print("  {:d}: {:s} - {:s}".format(index + 1, row["artist"], row["song"]))
             while True:
                 # increase index so we don't send the first letter multiple times when trying again
                 inputIndex += 1
                 try:
                     time.sleep(0.5)
-                    print("  {:d}: {:s} - {:s}".format(index + 1, row["artist"], row["song"]))
-                    elem = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "find-track-textfield")))
-                    elem.send_keys(row["artist"][:inputIndex])
+                    findTrack = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "find-track-textfield")))
+                    findTrack.send_keys(row["artist"][:inputIndex])
 
-                    elem = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "new-track-entry-form")))
-                    
-                    artist = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.artist']")))
+                    WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "new-track-entry-form")))
+
+                    artist = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.artist']")))
                     time.sleep(0.5)
                     artist.send_keys(row["artist"][inputIndex:])
 
-                    song = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.title']")))
+                    song = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.title']")))
                     song.send_keys(row["song"])
 
                     mins = row["playtime"].seconds // 60
-                    minutes = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.minutes']")))
+                    minutes = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.minutes']")))
                     minutes.send_keys(mins)
 
                     secs = row["playtime"].seconds % 60
-                    seconds = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.seconds']")))
+                    seconds = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.seconds']")))
                     seconds.send_keys(secs)
 
-                    save = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@type='button' and @value='Tallenna uusi biisi']")))
+                    save = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@type='button' and @value='Tallenna uusi biisi']")))
                     save.click()
 
-                    submitButton = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and @value='Lisää biisilistaan']")))
+                    submitButton = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and @value='Lisää biisilistaan']")))
                     submitButton.click()
 
                 except Exception as e:
                     printColor(str(e), colorama.Fore.RED)
                     continue
-
                 else:
                     break
 
         printColor("Done in {:.2f} seconds!".format(timer() - startTime), colorama.Fore.GREEN)
-        driver.close()
 
+    # ------------------------------------------------------------------------------
 
-# ==================================================================================
+    def openBassoDriver(self, show):
+        if not self.driver:
+            # open webdriver if not already open
+            self.driver = webdriver.Chrome(executable_path = self.driverPath)
 
-def printBold(text, color = colorama.Fore.WHITE):
-    print(colorama.Style.BRIGHT + color + text + colorama.Style.RESET_ALL)
+        self.driver.get("Basso website here...")
 
-# ==================================================================================
+        # clear current show
+        self.driver.find_element_by_id("broadcast-title-clear").click()
 
-def printColor(text, color = colorama.Fore.WHITE):
-    print(color + text + colorama.Style.RESET_ALL)   
+        # select correct show
+        select = Select(self.driver.find_element_by_css_selector("[ng-model*='play.broadcast']"))
+        select.select_by_visible_text(show)
 
-# ==================================================================================
+    # ------------------------------------------------------------------------------
 
-def setColor(text, color = colorama.Fore.WHITE):
-    return color + text + colorama.Style.RESET_ALL
+    def getShowString(self, date, showName):
+        return "{} 20:00-22:00 LIVE {}".format(date, showName)
+
 
 # ==================================================================================
 
 class PlaylistTool(QMainWindow):
-    
     def __init__(self):
         super().__init__()
 
         self.formatter = PlaylistFormatter()
-
         if platform.system().lower() == "darwin": # MacOS
-            self.formatter.driverPath = "/Users/Dropbox/CODE/webdriver/chromedriver"
             self.defaultPath = os.path.expanduser("~/Dropbox")
-
         else:
-            self.formatter.driverPath = "D:/Dropbox/CODE/webdriver/chromedriver.exe"
             self.defaultPath = 'D:/Dropbox'
 
         self.initUI()
 
     # ------------------------------------------------------------------------------
-    
+
     def initUI(self):
         self.setWindowTitle("Esgrove's Playlist Tool")
         self.setWindowIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
@@ -503,30 +511,49 @@ class PlaylistTool(QMainWindow):
         QMessageBox.about(self, "About", "Playlist Tools\nAkseli Lukkarila\n2018\n\n" + 
             "Python {:} QT {:} PyQT {:}".format(sys.version.split(" ")[0], 
                                                 QT_VERSION_STR, 
-                                                PYQT_VERSION_STR))        
+                                                PYQT_VERSION_STR))
 
 
 # ==================================================================================
 
+def printBold(text, color = colorama.Fore.WHITE):
+    print(colorama.Style.BRIGHT + color + text + colorama.Style.RESET_ALL)
+
+# ==================================================================================
+
+def printColor(text, color = colorama.Fore.WHITE):
+    print(color + text + colorama.Style.RESET_ALL)
+
+# ==================================================================================
+
+def getColor(text, color = colorama.Fore.WHITE):
+    return color + text + colorama.Style.RESET_ALL
+
+# ==================================================================================
+
 if __name__ == "__main__":
+    colorama.init()
     if len(sys.argv) > 1:
-        # arguments given, run just on command line
+        # arguments given, run on command line
         printBold("\n///// PLAYLIST FORMATTER /////\n", colorama.Fore.RED)
         filename = sys.argv[1]
+        outfile = sys.argv[2] if len(sys.argv) == 2 else filename
 
         formatter = PlaylistFormatter()
         formatter.readPlaylist(filename)
         formatter.printPlaylist()
 
-        print("exporting formatted playlist...")
-        formatter.exportCSV()
+        print("exporting formatted playlist to:")
+        printColor(outfile, colorama.Fore.YELLOW)
+        formatter.exportCSV(outfile)
 
         printBold("\n/////////// DONE ////////////\n", colorama.Fore.GREEN)
 
-    else:
-        # open GUI
+    else: # open GUI
         app = QApplication(sys.argv)
         app.setStyle('Fusion')
+
+        # colors
         palette = QPalette()
         palette.setColor(QPalette.Window, QColor(205,0,0))
         palette.setColor(QPalette.WindowText, Qt.white)
@@ -542,7 +569,9 @@ if __name__ == "__main__":
         palette.setColor(QPalette.HighlightedText, Qt.black)
         app.setPalette(palette)
 
+        # run tool
         tool = PlaylistTool()
         tool.show()
 
+        # wait for exit
         sys.exit(app.exec_())
