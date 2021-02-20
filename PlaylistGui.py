@@ -159,7 +159,7 @@ class PlaylistGui(QMainWindow):
         self.playlist_file_edit.setText(str(self.formatter.playlist_file))
         self.playlist_name_edit.setText(str(self.formatter.playlist_name))
         self.playlist_date_edit.setText(str(self.formatter.playlist_date))
-        self.statusbar.showMessage("Loaded playlist: {}".format(filename), 5000)
+        self.statusbar.showMessage(f"Loaded playlist: {filename}", 5000)
 
     def choose_font(self, event):
         font, ok = QFontDialog.getFont()
@@ -184,7 +184,7 @@ class PlaylistGui(QMainWindow):
             else:
                 self.formatter.export_csv(filename)
 
-            self.statusbar.showMessage("Saved playlist as: {}".format(filename), 5000)
+            self.statusbar.showMessage(f"Saved playlist as: {filename}", 5000)
 
     def fill_basso(self, event):
         self.formatter.fill_basso("Ruff Cut", self.playlist_date_edit.text())

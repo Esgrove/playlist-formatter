@@ -6,7 +6,6 @@ Akseli Lukkarila
 import csv
 import os
 import platform
-import sys
 import time
 from datetime import datetime, timedelta
 from timeit import default_timer as timer
@@ -42,89 +41,81 @@ class PlaylistFormatter:
         if not os.path.isfile(filename):
             raise RuntimeError("File does not exist.")
 
-        print("reading playlist {}\n".format(get_color(filename, Color.yellow)))
+        print(f"reading playlist {get_color(filename, Color.yellow)}\n")
         self.filepath, self.filename = os.path.split(filename)
         self.filename, self.filetype = os.path.splitext(self.filename)
         self.filetype = self.filetype.strip().lower()
         if self.filetype == ".csv":
             self._read_csv(filename)
-
         elif self.filetype == ".txt":
             self._read_txt(filename)
-
         elif self.filetype in (".xlsx", ".xlsm", ".xltx", ".xltm"):
             self._read_xls(filename)
-
         else:
-            raise RuntimeError("Unsupported filetype \"{}\".".format(self.filetype))
+            raise RuntimeError(f"Unsupported filetype '{self.filetype}'!")
 
         self.print_playlist()
 
     def _read_csv(self, filename):
-        try:
-            with open(filename) as csvFile:
-                playlist_data = csv.DictReader(csvFile)
+        with open(filename) as csvFile:
+            playlist_data = csv.DictReader(csvFile)
 
-                previous_time = timedelta()
-                playlist = []
-                playlist_index = 0
-                for index, row_data in enumerate(playlist_data):
-                    if index == 0 and "name" in row_data and "start time" in row_data:
-                        # header row
-                        self.playlist_name = row_data["name"]
-                        self.playlist_date = row_data["start time"].split(",")[0]
-                        continue
+            previous_time = timedelta()
+            playlist = []
+            playlist_index = 0
+            for index, row_data in enumerate(playlist_data):
+                if index == 0 and "name" in row_data and "start time" in row_data:
+                    # info row
+                    self.playlist_name = row_data["name"]
+                    self.playlist_date = row_data["start time"].split(",")[0]
+                    continue
 
-                    time_string = row_data["start time"].replace(".", ":").strip().split(" ")[0]
-                    row_data["start time"] = datetime.strptime(time_string, "%H:%M:%S")
+                time_string = row_data["start time"].replace(".", ":").strip().split(" ")[0]
+                row_data["start time"] = datetime.strptime(time_string, "%H:%M:%S")
 
-                    if index == 1:
-                        start_time = row_data["start time"]
+                if index == 1:
+                    start_time = row_data["start time"]
 
-                    title = row_data["name"]
-                    if " - " in title:
-                        title = title.replace(" - ", " (") + ")"
+                title = row_data["name"]
+                if " - " in title:
+                    title = title.replace(" - ", " (") + ")"
 
-                    title = title.replace("(Clean)", "").replace("(clean)", "")
-                    title = title.replace("(Dirty)", "").replace("(dirty)", "")
-                    title = title.replace("(Original Mix)", "").replace("(original Mix)", "")
-                    title = title.replace("(Dirty-", "(").replace("(dirty-", "(")
-                    title = title.replace("(Clean-", "(").replace("(clean-", "(")
-                    title = title.replace(" )", ")")
-                    title = title.replace("( ", "(")
+                title = title.replace("(Clean)", "").replace("(clean)", "")
+                title = title.replace("(Dirty)", "").replace("(dirty)", "")
+                title = title.replace("(Original Mix)", "").replace("(original Mix)", "")
+                title = title.replace("(Dirty-", "(").replace("(dirty-", "(")
+                title = title.replace("(Clean-", "(").replace("(clean-", "(")
+                title = title.replace(" )", ")")
+                title = title.replace("( ", "(")
 
-                    # split at all whitespace chars and recombine -> remove extra spaces and linebreaks...
-                    title = " ".join(title.split())
+                # split at all whitespace chars and recombine -> remove extra spaces and linebreaks...
+                title = " ".join(title.split())
 
-                    play_time = row_data["start time"] - start_time
-                    song_data = {"artist": titlecase(row_data["artist"]),
-                                 "song": titlecase(title),
-                                 "time": play_time,
-                                 "playtime": play_time - previous_time,
-                                 "starttime": row_data["start time"]}
+                play_time = row_data["start time"] - start_time
+                song_data = {"artist": titlecase(row_data["artist"]),
+                             "song": titlecase(title),
+                             "time": play_time,
+                             "playtime": play_time - previous_time,
+                             "starttime": row_data["start time"]}
 
-                    if song_data["playtime"] < timedelta(seconds=60):
-                        song_data["playtime"] = timedelta(seconds=60)
+                if song_data["playtime"] < timedelta(seconds=60):
+                    song_data["playtime"] = timedelta(seconds=60)
 
-                    # sum duplicate song playtimes
-                    if playlist_index and playlist[playlist_index - 1]["song"] == song_data["song"] and \
-                            playlist[playlist_index - 1]["artist"] == song_data["artist"]:
-                        playlist[playlist_index - 1]["playtime"] += song_data["playtime"]
+                # sum duplicate song playtimes
+                if playlist_index and playlist[playlist_index - 1]["song"] == song_data["song"] and \
+                        playlist[playlist_index - 1]["artist"] == song_data["artist"]:
+                    playlist[playlist_index - 1]["playtime"] += song_data["playtime"]
 
-                    else:
-                        playlist.append(song_data)
-                        playlist_index += 1
-                        previous_time = play_time
+                else:
+                    playlist.append(song_data)
+                    playlist_index += 1
+                    previous_time = play_time
 
-                for i in range(1, len(playlist)):
-                    playlist[i - 1]["playtime"] = playlist[i]["playtime"]
+            for i in range(1, len(playlist)):
+                playlist[i - 1]["playtime"] = playlist[i]["playtime"]
 
-                self.playlist = playlist
-                self.playlist_file = filename
-
-        except Exception:
-            error_type, error_value, _ = sys.exc_info()
-            raise RuntimeError("Error reading CSV:\n{}: {}".format(str(error_type), str(error_value)))
+            self.playlist = playlist
+            self.playlist_file = filename
 
     def _read_xls(self, filename):
         # TODO
@@ -207,7 +198,7 @@ class PlaylistFormatter:
         return playlist
 
     def fill_basso(self, show, start_index=0):
-        """Fill radioshow playlist to Bassoradio database using Selenium"""
+        """Fill radioshow playlist to Bassoradio database using Selenium."""
         print_bold("Uploading playlist to dj.basso.fi...", Color.red)
         start_time = timer()
 
@@ -270,7 +261,7 @@ class PlaylistFormatter:
                 else:
                     break
 
-        print_color("Done in {:.2f} seconds!".format(timer() - start_time), Color.green)
+        print_color(f"Done in {timer() - start_time:.2f} seconds!", Color.green)
 
     def open_basso_driver(self, show):
         if not self.driver:
@@ -288,4 +279,4 @@ class PlaylistFormatter:
 
     @staticmethod
     def get_show_string(date, show_name):
-        return "{} 20:00-22:00 LIVE {}".format(date, show_name)
+        return f"{date} 20:00-22:00 LIVE {show_name}"
