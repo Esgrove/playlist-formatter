@@ -1,3 +1,3 @@
 @echo off
-python PlaylistFormatter.py
+python playlist_tool.py
 pause
