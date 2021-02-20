@@ -1,0 +1,4 @@
+PyQt5==5.15.2
+colorama==0.4.4
+selenium==3.141.0
+titlecase==2.0.0

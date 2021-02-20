@@ -5,38 +5,29 @@ Akseli Lukkarila
 """
 import csv
 import os
+import platform
 import sys
 import time
-import platform
-
-import colorama
-
 from datetime import datetime, timedelta
 from timeit import default_timer as timer
 
-from titlecase import titlecase
-
+import colorama
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
-from PyQt5.Qt import PYQT_VERSION_STR, QSizePolicy
-from PyQt5.QtCore import Qt, QT_VERSION_STR
-from PyQt5.QtGui import QColor, QPalette, QFont
-from PyQt5.QtWidgets import (QApplication, QWidget, QFileDialog, QStyle, QTreeWidgetItem, QHeaderView,
-                            QMainWindow, QAbstractItemView, QGridLayout, QAction, QMessageBox,
-                            QDesktopWidget, QPushButton, QFontDialog, QLineEdit, QLabel, QTreeWidget)
+from selenium.webdriver.support.ui import Select, WebDriverWait
+from titlecase import titlecase
 
 from colorprint import Color, get_color, print_color, print_bold
 
 
 class PlaylistFormatter:
-    """Reads a playlist textfile and creates correctly formatted csv or excel."""
+    """Reads a playlist text file and creates correctly formatted csv or excel."""
+
     def __init__(self):
-        self.playlistFile = None
-        self.playlistDate = None
-        self.playlistName = ""
+        self.playlist_file = None
+        self.playlist_date = None
+        self.playlist_name = ""
         self.filepath = ""
         self.filename = ""
         self.filetype = ""
@@ -47,9 +38,7 @@ class PlaylistFormatter:
         else:
             self.driverPath = "C:\\ProgramData\\chocolatey\\bin\\chromedriver.exe"
 
-    # ------------------------------------------------------------------------------
-
-    def readPlaylist(self, filename):
+    def read_playlist(self, filename):
         if not os.path.isfile(filename):
             raise RuntimeError("File does not exist.")
 
@@ -58,42 +47,41 @@ class PlaylistFormatter:
         self.filename, self.filetype = os.path.splitext(self.filename)
         self.filetype = self.filetype.strip().lower()
         if self.filetype == ".csv":
-            self._readCSV(filename)
+            self._read_csv(filename)
 
         elif self.filetype == ".txt":
-            self._readTXT(filename)
+            self._read_txt(filename)
 
         elif self.filetype in (".xlsx", ".xlsm", ".xltx", ".xltm"):
-            self._readXLS(filename)
+            self._read_xls(filename)
 
         else:
             raise RuntimeError("Unsupported filetype \"{}\".".format(self.filetype))
 
-        self.printPlaylist()
+        self.print_playlist()
 
-    # ------------------------------------------------------------------------------
-
-    def _readCSV(self, filename):
+    def _read_csv(self, filename):
         try:
             with open(filename) as csvFile:
-                playlistData = csv.DictReader(csvFile)
+                playlist_data = csv.DictReader(csvFile)
 
-                previousTime = timedelta()
+                previous_time = timedelta()
                 playlist = []
-                playlistIndex = 0
-                for index, rowData in enumerate(playlistData):
-                    if index == 0:
-                        self.playlistName = rowData["name"]
-                        self.playlistDate = rowData["start time"].split(",")[0]
+                playlist_index = 0
+                for index, row_data in enumerate(playlist_data):
+                    if index == 0 and "name" in row_data and "start time" in row_data:
+                        # header row
+                        self.playlist_name = row_data["name"]
+                        self.playlist_date = row_data["start time"].split(",")[0]
                         continue
 
-                    timeString = rowData["start time"].replace(".", ":").strip().split(" ")[0]
-                    rowData["start time"] = datetime.strptime(timeString, "%H:%M:%S")
+                    time_string = row_data["start time"].replace(".", ":").strip().split(" ")[0]
+                    row_data["start time"] = datetime.strptime(time_string, "%H:%M:%S")
 
                     if index == 1:
-                        startTime = rowData["start time"]
+                        start_time = row_data["start time"]
 
-                    title = rowData["name"]
+                    title = row_data["name"]
                     if " - " in title:
                         title = title.replace(" - ", " (") + ")"
 
@@ -108,104 +96,95 @@ class PlaylistFormatter:
                     # split at all whitespace chars and recombine -> remove extra spaces and linebreaks...
                     title = " ".join(title.split())
 
-                    playTime = rowData["start time"] - startTime
-                    songData = {"artist": titlecase(rowData["artist"]),
-                                "song": titlecase(title),
-                                "time": playTime,
-                                "playtime": playTime - previousTime,
-                                "starttime": rowData["start time"]}
+                    play_time = row_data["start time"] - start_time
+                    song_data = {"artist": titlecase(row_data["artist"]),
+                                 "song": titlecase(title),
+                                 "time": play_time,
+                                 "playtime": play_time - previous_time,
+                                 "starttime": row_data["start time"]}
 
-                    if songData["playtime"] < timedelta(seconds=60):
-                        songData["playtime"] = timedelta(seconds=60)
+                    if song_data["playtime"] < timedelta(seconds=60):
+                        song_data["playtime"] = timedelta(seconds=60)
 
                     # sum duplicate song playtimes
-                    if playlistIndex and playlist[playlistIndex-1]["song"] == songData["song"] and playlist[playlistIndex-1]["artist"] == songData["artist"]:
-                        playlist[playlistIndex-1]["playtime"] += songData["playtime"]
+                    if playlist_index and playlist[playlist_index - 1]["song"] == song_data["song"] and \
+                            playlist[playlist_index - 1]["artist"] == song_data["artist"]:
+                        playlist[playlist_index - 1]["playtime"] += song_data["playtime"]
 
                     else:
-                        playlist.append(songData)
-                        playlistIndex += 1
-                        previousTime = playTime
+                        playlist.append(song_data)
+                        playlist_index += 1
+                        previous_time = play_time
 
                 for i in range(1, len(playlist)):
-                    playlist[i-1]["playtime"] = playlist[i]["playtime"]
+                    playlist[i - 1]["playtime"] = playlist[i]["playtime"]
 
                 self.playlist = playlist
-                self.playlistFile = filename
+                self.playlist_file = filename
 
         except Exception:
-            errorType, errorValue, _ = sys.exc_info()
-            raise RuntimeError("Error reading CSV:\n{}: {}".format(str(errorType), str(errorValue)))
+            error_type, error_value, _ = sys.exc_info()
+            raise RuntimeError("Error reading CSV:\n{}: {}".format(str(error_type), str(error_value)))
 
-    # ------------------------------------------------------------------------------
-
-    def _readXLS(self, filename):
+    def _read_xls(self, filename):
         # TODO
-        pass
+        raise NotImplementedError
 
-    # ------------------------------------------------------------------------------
-
-    def _readTXT(self, filename):
+    def _read_txt(self, filename):
         # TODO
-        pass
+        raise NotImplementedError
 
-    # ------------------------------------------------------------------------------
-
-    def exportCSV(self, filename = None):
+    def export_csv(self, filename=None):
         if not self.playlist:
             raise RuntimeError("No playlist. Read a playlist first!")
 
-        outFilename = filename if filename else self.filename
-        if not outFilename.endswith(".csv"):
-            outFilename += ".csv"
+        out_filename = filename if filename else self.filename
+        if not out_filename.endswith(".csv"):
+            out_filename += ".csv"
 
-        outFile = os.path.join(self.filepath, outFilename)
-        with open(outFile, "w", newline = "") as csvFile:
-            csvWriter = csv.writer(csvFile, delimiter = ",")
-            csvWriter.writerow(["Artist", "", "Song", "Time", "Playtime", "Start time"])
+        out_file = os.path.join(self.filepath, out_filename)
+        with open(out_file, "w", newline="") as csvFile:
+            csv_writer = csv.writer(csvFile, delimiter=",")
+            csv_writer.writerow(["Artist", "", "Song", "Time", "Playtime", "Start time"])
             for row in self.playlist:
-                csvWriter.writerow([row["artist"],
-                                    "-",
-                                    row["song"],
-                                    str(row["time"]).split(", ")[-1],
-                                    str(row["playtime"]).split(", ")[-1],
-                                    row["starttime"].strftime("%H:%M:%S")])
+                csv_writer.writerow([row["artist"],
+                                     "-",
+                                     row["song"],
+                                     str(row["time"]).split(", ")[-1],
+                                     str(row["playtime"]).split(", ")[-1],
+                                     row["starttime"].strftime("%H:%M:%S")])
 
-    # ------------------------------------------------------------------------------
-
-    def printPlaylist(self):
+    def print_playlist(self):
         if not self.playlist:
             raise RuntimeError("No playlist. Read a playlist first!")
 
-        widthArtist = max(len(row["artist"]) for row in self.playlist)
-        widthTitle  = max(len(row["song"])  for row in self.playlist)
-        heading = "{:<{widthArtist}s} {:<{widthTitle}s}   {:9s} {:9s} {:9s}".format(
-                    "ARTIST",
-                    "SONG",
-                    "TIME",
-                    "PLAYTIME",
-                    "STARTTIME",
-                    widthArtist = widthArtist + 2,
-                    widthTitle = widthTitle)
+        width_artist = max(len(row["artist"]) for row in self.playlist)
+        width_title = max(len(row["song"]) for row in self.playlist)
+        heading = "{:<{width_artist}s} {:<{width_title}s}   {:9s} {:9s} {:9s}".format(
+            "ARTIST",
+            "SONG",
+            "TIME",
+            "PLAYTIME",
+            "STARTTIME",
+            width_artist=width_artist + 2,
+            width_title=width_title)
         print_bold(heading)
         print_color("".join(["-"] * len(heading)))
 
         for row in self.playlist:
-            print("{:<{widthArtist}s} - {:<{widthTitle}s}   {}   {}   {}".format(
-                    row["artist"],
-                    row["song"],
-                    Color.yellow + str(row["time"]).split(", ")[-1],
-                    Color.green + str(row["playtime"]).split(", ")[-1],
-                    Color.blue + row["starttime"].strftime("%H:%M:%S"),
-                    widthArtist=widthArtist,
-                    widthTitle=widthTitle) +
-                    colorama.Style.RESET_ALL)
+            print("{:<{width_artist}s} - {:<{width_title}s}   {}   {}   {}".format(
+                row["artist"],
+                row["song"],
+                Color.yellow + str(row["time"]).split(", ")[-1],
+                Color.green + str(row["playtime"]).split(", ")[-1],
+                Color.blue + row["starttime"].strftime("%H:%M:%S"),
+                width_artist=width_artist,
+                width_title=width_title) +
+                  colorama.Style.RESET_ALL)
 
         print_color("".join(["-"] * len(heading)) + "\n")
 
-    # ------------------------------------------------------------------------------
-
-    def formatPlaylist(self):
+    def format_playlist(self):
         """
         Return formatted playlist for printing.
             Returns (str): list of formatted song strings
@@ -214,85 +193,89 @@ class PlaylistFormatter:
         if not self.playlist:
             raise RuntimeError("No playlist. Read a playlist first!")
 
-        widthArtist = max(len(row["artist"]) for row in self.playlist)
-        widthTitle  = max(len(row["song"])  for row in self.playlist)
+        width_artist = max(len(row["artist"]) for row in self.playlist)
+        width_title = max(len(row["song"]) for row in self.playlist)
 
         for row in self.playlist:
             playlist.append("{:<{widthArtist}s} - {:<{widthTitle}s}   {}".format(
-                    row["artist"],
-                    row["song"],
-                    str(row["time"]).split(", ")[-1],
-                    widthArtist = widthArtist,
-                    widthTitle = widthTitle))
+                row["artist"],
+                row["song"],
+                str(row["time"]).split(", ")[-1],
+                widthArtist=width_artist,
+                widthTitle=width_title))
 
         return playlist
 
-    # ------------------------------------------------------------------------------
-
-    def fillBasso(self, show, startIndex = 0):
+    def fill_basso(self, show, start_index=0):
         """Fill radioshow playlist to Bassoradio database using Selenium"""
-        print_bold("Uploading playlist to dj.basso.fi...", Color.RED)
-        startTime = timer()
+        print_bold("Uploading playlist to dj.basso.fi...", Color.red)
+        start_time = timer()
 
-        if len(self.playlist) <= startIndex:
+        if len(self.playlist) <= start_index:
             print("Index not valid.")
             return
 
-        self.openBassoDriver(show)
+        self.open_basso_driver(show)
 
         print("\nFilling playlist for show:")
-        print_color(show, Color.CYAN)
+        print_color(show, Color.cyan)
 
         # input song data
-        print_color("\nAdding songs...", Color.MAGENTA)
-        for index, row in enumerate(self.playlist[startIndex:]):
-            inputIndex = 0
+        print_color("\nAdding songs...", Color.magenta)
+        for index, row in enumerate(self.playlist[start_index:]):
+            input_index = 0
             print("  {:d}: {:s} - {:s}".format(index + 1, row["artist"], row["song"]))
             while True:
                 # increase index so we don't send the first letter multiple times when trying again
-                inputIndex += 1
+                input_index += 1
                 try:
                     time.sleep(0.5)
-                    findTrack = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "find-track-textfield")))
-                    findTrack.send_keys(row["artist"][:inputIndex])
+                    find_track = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "find-track-textfield")))
+                    find_track.send_keys(row["artist"][:input_index])
 
-                    WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "new-track-entry-form")))
+                    WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "new-track-entry-form")))
 
-                    artist = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.artist']")))
+                    artist = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.artist']")))
                     time.sleep(0.5)
-                    artist.send_keys(row["artist"][inputIndex:])
+                    artist.send_keys(row["artist"][input_index:])
 
-                    song = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.title']")))
+                    song = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.title']")))
                     song.send_keys(row["song"])
 
                     mins = row["playtime"].seconds // 60
-                    minutes = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.minutes']")))
+                    minutes = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.minutes']")))
                     minutes.send_keys(mins)
 
                     secs = row["playtime"].seconds % 60
-                    seconds = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.seconds']")))
+                    seconds = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.seconds']")))
                     seconds.send_keys(secs)
 
-                    save = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@type='button' and @value='Tallenna uusi biisi']")))
+                    save = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                        (By.XPATH, "//input[@type='button' and @value='Tallenna uusi biisi']")))
                     save.click()
 
-                    submitButton = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and @value='Lisää biisilistaan']")))
-                    submitButton.click()
+                    submit_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                        (By.XPATH, "//input[@type='submit' and @value='Lisää biisilistaan']")))
+                    submit_button.click()
 
                 except Exception as e:
-                    print_color(str(e), Color.RED)
+                    print_color(str(e), Color.red)
                     continue
                 else:
                     break
 
-        print_color("Done in {:.2f} seconds!".format(timer() - startTime), Color.GREEN)
+        print_color("Done in {:.2f} seconds!".format(timer() - start_time), Color.green)
 
-    # ------------------------------------------------------------------------------
-
-    def openBassoDriver(self, show):
+    def open_basso_driver(self, show):
         if not self.driver:
             # open webdriver if not already open
-            self.driver = webdriver.Chrome(executable_path = self.driverPath)
+            self.driver = webdriver.Chrome(executable_path=self.driverPath)
 
         self.driver.get("Basso website here...")
 
@@ -303,255 +286,6 @@ class PlaylistFormatter:
         select = Select(self.driver.find_element_by_css_selector("[ng-model*='play.broadcast']"))
         select.select_by_visible_text(show)
 
-    # ------------------------------------------------------------------------------
-
-    def getShowString(self, date, showName):
-        return "{} 20:00-22:00 LIVE {}".format(date, showName)
-
-
-# ==================================================================================
-
-class PlaylistTool(QMainWindow):
-    def __init__(self):
-        super().__init__()
-
-        self.formatter = PlaylistFormatter()
-        if platform.system().lower() == "darwin": # MacOS
-            self.defaultPath = os.path.expanduser("~/Dropbox")
-        else:
-            self.defaultPath = 'D:/Dropbox'
-
-        self.initUI()
-
-    # ------------------------------------------------------------------------------
-
-    def initUI(self):
-        self.setWindowTitle("Esgrove's Playlist Tool")
-        self.setWindowIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        self.setAcceptDrops(True)
-
-        # geometry
-        self.setGeometry(0, 0, 1000, 800)
-        self.setMinimumSize(500, 500)
-        qtRectangle = self.frameGeometry()
-        qtRectangle.moveCenter(QDesktopWidget().availableGeometry().center())
-        self.move(qtRectangle.topLeft())
-
-        # menubar
-        self.menubar = self.menuBar()
-        self.fileMenu = self.menubar.addMenu('&File')
-        self.viewMenu = self.menubar.addMenu('&View')
-        self.helpMenu = self.menubar.addMenu('&Help')
-        self.statusbar = self.statusBar()
-
-        # menu actions
-        self.exitAct = QAction(self.style().standardIcon(QStyle.SP_MessageBoxCritical), '&Exit', self)
-        self.exitAct.setShortcut("Escape") # Ctrl+Q
-        self.exitAct.setStatusTip('Exit application')
-        self.exitAct.triggered.connect(self.closeEvent)
-        self.fileMenu.addAction(self.exitAct)
-
-        self.aboutAct = QAction(self.style().standardIcon(QStyle.SP_MessageBoxQuestion), '&About', self)
-        self.aboutAct.setShortcut("Ctrl+I")
-        self.aboutAct.setStatusTip('About this application')
-        self.aboutAct.triggered.connect(self.aboutEvent)
-        self.helpMenu.addAction(self.aboutAct)
-
-        self.fontAct = QAction("&Choose Font", self)
-        self.fontAct.triggered.connect(self.chooseFont)
-        self.viewMenu.addAction(self.fontAct)
-
-        # buttons
-        self.openButton = QPushButton('Open playlist', self)
-        self.openButton.setToolTip('Open playlist filedialog')
-        self.openButton.clicked.connect(self.openPlaylist)
-        self.openButton.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
-
-        self.exportButton = QPushButton('Save playlist', self)
-        self.exportButton.setToolTip('Export playlist to file')
-        self.exportButton.clicked.connect(self.exportPlaylist)
-        self.exportButton.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
-
-        self.bassoButton = QPushButton('Upload to Basso', self)
-        self.bassoButton.setToolTip('Fill playlist to dj.Basso.fi')
-        self.bassoButton.clicked.connect(self.fillBasso)
-        self.bassoButton.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
-
-        # line edits
-        self.playlistNameLabel = QLabel("Playlist Name")
-        self.playlistDateLabel = QLabel("Playlist Date")
-        self.playlistFileLabel = QLabel("Playlist File")
-        self.playlistNameEdit = QLineEdit()
-        self.playlistDateEdit = QLineEdit()
-        self.playlistFileEdit = QLineEdit()
-        self.playlistFileEdit.setReadOnly(True)
-
-        # list view
-        self.list = QTreeWidget()
-        self.list.setFont(QFont('Consolas', 9))
-        self.list.setStyleSheet("QTreeView::item { margin: 2px; }") # QTreeWidget { border-radius: 2px; border-style: outset; border-width: 2px; }
-        self.list.setAlternatingRowColors(True)
-        self.list.setAcceptDrops(True)
-        self.list.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-        self.list.setDragDropMode(QAbstractItemView.InternalMove)
-        self.list.setDropIndicatorShown(True)
-        self.list.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.list.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.list.setColumnCount(4)
-        self.list.setHeaderLabels(("index", "artist", "song", "playtime"))
-        self.list.header().setStretchLastSection(False)
-        self.list.header().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.list.setColumnWidth(0, 50)
-        self.list.setColumnWidth(1, 500)
-        self.list.setColumnWidth(3, 100)
-
-        # grid
-        self.mainGrid = QGridLayout()
-        self.mainGrid.setSpacing(10)
-        self.mainGrid.addWidget(self.openButton,        0, 0, 1, 2, Qt.AlignTop)
-        self.mainGrid.addWidget(self.exportButton,      0, 2, 1, 2, Qt.AlignTop)
-        self.mainGrid.addWidget(self.bassoButton,       0, 4, 1, 2, Qt.AlignTop)
-        self.mainGrid.addWidget(self.playlistFileLabel, 1, 0, 1, 1, Qt.AlignRight)
-        self.mainGrid.addWidget(self.playlistFileEdit,  1, 1, 1, 5, Qt.AlignTop)
-        self.mainGrid.addWidget(self.playlistNameLabel, 2, 0, 1, 1, Qt.AlignRight)
-        self.mainGrid.addWidget(self.playlistNameEdit,  2, 1, 1, 2, Qt.AlignTop)
-        self.mainGrid.addWidget(self.playlistDateLabel, 2, 3, 1, 1, Qt.AlignRight)
-        self.mainGrid.addWidget(self.playlistDateEdit,  2, 4, 1, 2, Qt.AlignTop)
-        self.mainGrid.addWidget(self.list,              3, 0, 1, 6)
-
-        # main widget
-        self.mainWidget = QWidget()
-        self.mainWidget.setLayout(self.mainGrid)
-        self.setCentralWidget(self.mainWidget)
-
-    # ------------------------------------------------------------------------------
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-        else:
-            event.ignore()
-
-    # ------------------------------------------------------------------------------
-
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.setDropAction(Qt.CopyAction)
-            event.accept()
-        else:
-            event.ignore()
-
-    # ------------------------------------------------------------------------------
-
-    def dropEvent(self, event):
-        filename = str(event.mimeData().urls()[0].toLocalFile())
-        self.addPlaylist(filename)
-
-    # ------------------------------------------------------------------------------
-
-    def openPlaylist(self, event):
-        filename, _ = QFileDialog.getOpenFileName(self, 'Open playlist', self.defaultPath, "Files (*.csv *.txt *.xlsx *.xlsm)")
-        if filename:
-            self.addPlaylist(filename)
-
-    # ------------------------------------------------------------------------------
-
-    def addPlaylist(self, filename):
-        self.formatter.readPlaylist(filename)
-        for index, row in enumerate(self.formatter.playlist):
-            self.list.addTopLevelItem(QTreeWidgetItem((str(index + 1), row["artist"], row["song"], str(row["playtime"]).split(", ")[-1])))
-
-        self.playlistFileEdit.setText(str(self.formatter.playlistFile))
-        self.playlistNameEdit.setText(str(self.formatter.playlistName))
-        self.playlistDateEdit.setText(str(self.formatter.playlistDate))
-        self.statusbar.showMessage("Loaded playlist: {}".format(filename), 5000)
-
-    # ------------------------------------------------------------------------------
-
-    def exportPlaylist(self, event):
-        filename, _ = QFileDialog.getSaveFileName(self, 'Save playlist', self.defaultPath + os.sep + self.playlistNameEdit.text())
-        if filename:
-            if filename.endswith(".csv"):
-                self.formatter.exportCSV(filename)
-
-            elif filename.endswith(".txt"):
-                print_color("txt export not implemented yet!", Color.RED)
-                return
-
-            elif filename.endswith(".xlsx"):
-                print_color("Excel export not implemented yet!", Color.RED)
-                return
-
-            else:
-                self.formatter.exportCSV(filename)
-
-            self.statusbar.showMessage("Saved playlist as: {}".format(filename), 5000)
-
-    # ------------------------------------------------------------------------------
-
-    def fillBasso(self, event):
-        self.formatter.fillBasso("Ruff Cut", self.playlistDateEdit.text())
-
-    # ------------------------------------------------------------------------------
-
-    def chooseFont(self, event):
-        font, ok = QFontDialog.getFont()
-        if ok:
-            self.list.setFont(font)
-
-    # ------------------------------------------------------------------------------
-
-    def closeEvent(self, event):
-        app.quit()
-
-    # ------------------------------------------------------------------------------
-
-    def aboutEvent(self, event):
-        QMessageBox.about(self, "About", "Playlist Tools\nAkseli Lukkarila\n2018\n\n" +
-                                f"Python {sys.version.split(' ')[0]} QT {QT_VERSION_STR} PyQT {PYQT_VERSION_STR}")
-
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        # arguments given, run on command line
-        print_bold("\n///// PLAYLIST FORMATTER /////\n", Color.red)
-        filename = sys.argv[1]
-        outfile = sys.argv[2] if len(sys.argv) == 2 else filename
-
-        formatter = PlaylistFormatter()
-        formatter.readPlaylist(filename)
-        formatter.printPlaylist()
-
-        print("exporting formatted playlist to:")
-        print_color(outfile, Color.yellow)
-        formatter.exportCSV(outfile)
-
-        print_bold("\n/////////// DONE ////////////\n", Color.green)
-
-    else:
-        # open GUI
-        app = QApplication(sys.argv)
-        app.setStyle('Fusion')
-
-        # colors
-        palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(205,0,0))
-        palette.setColor(QPalette.WindowText, Qt.white)
-        palette.setColor(QPalette.Base, QColor(15,15,15))
-        palette.setColor(QPalette.AlternateBase, QColor(53,53,53))
-        palette.setColor(QPalette.ToolTipBase, Qt.white)
-        palette.setColor(QPalette.ToolTipText, Qt.white)
-        palette.setColor(QPalette.Text, Qt.white)
-        palette.setColor(QPalette.Button, QColor(53,53,53))
-        palette.setColor(QPalette.ButtonText, Qt.white)
-        palette.setColor(QPalette.BrightText, Qt.red)
-        palette.setColor(QPalette.Highlight, QColor(205,205,205).lighter())
-        palette.setColor(QPalette.HighlightedText, Qt.black)
-        app.setPalette(palette)
-
-        # run tool
-        tool = PlaylistTool()
-        tool.show()
-
-        # wait for exit
-        sys.exit(app.exec_())
+    @staticmethod
+    def get_show_string(date, show_name):
+        return "{} 20:00-22:00 LIVE {}".format(date, show_name)
