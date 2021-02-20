@@ -9,31 +9,30 @@ import sys
 import time
 import platform
 
+import colorama
+
 from datetime import datetime, timedelta
 from timeit import default_timer as timer
 
-import colorama
-import openpyxl
-import requests
 from titlecase import titlecase
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from PyQt5.Qt import PYQT_VERSION_STR, QSizePolicy
 from PyQt5.QtCore import Qt, QT_VERSION_STR
-from PyQt5.QtGui import QIcon, QColor, QPalette, QKeySequence, QFont
+from PyQt5.QtGui import QColor, QPalette, QFont
 from PyQt5.QtWidgets import (QApplication, QWidget, QFileDialog, QStyle, QTreeWidgetItem, QHeaderView,
-                            QMainWindow, QMenuBar, QAbstractItemView, QGridLayout, QAction, QMessageBox,
-                            QDesktopWidget, QPushButton, QListWidget, QFontDialog, QLineEdit, QLabel, QTreeWidget)
+                            QMainWindow, QAbstractItemView, QGridLayout, QAction, QMessageBox,
+                            QDesktopWidget, QPushButton, QFontDialog, QLineEdit, QLabel, QTreeWidget)
 
-# ==================================================================================
+from colorprint import Color, get_color, print_color, print_bold
+
 
 class PlaylistFormatter:
-    """Reads a playlist textfile and creates correctly formatted csv or excel"""
+    """Reads a playlist textfile and creates correctly formatted csv or excel."""
     def __init__(self):
         self.playlistFile = None
         self.playlistDate = None
@@ -43,18 +42,18 @@ class PlaylistFormatter:
         self.filetype = ""
         self.playlist = []
         self.driver = None
-        if platform.system().lower() == "darwin": # MacOS
-            self.driverPath = "/Users/Dropbox/CODE/webdriver/chromedriver"
+        if platform.system().lower() == "darwin":  # MacOS
+            self.driverPath = "/usr/local/bin/chromedriver"
         else:
-            self.driverPath = "D:/Dropbox/CODE/webdriver/chromedriver.exe"
+            self.driverPath = "C:\\ProgramData\\chocolatey\\bin\\chromedriver.exe"
 
     # ------------------------------------------------------------------------------
 
     def readPlaylist(self, filename):
         if not os.path.isfile(filename):
             raise RuntimeError("File does not exist.")
-        
-        print("reading playlist {}\n".format(getColor(filename, colorama.Fore.YELLOW)))
+
+        print("reading playlist {}\n".format(get_color(filename, Color.yellow)))
         self.filepath, self.filename = os.path.split(filename)
         self.filename, self.filetype = os.path.splitext(self.filename)
         self.filetype = self.filetype.strip().lower()
@@ -110,7 +109,7 @@ class PlaylistFormatter:
                     title = " ".join(title.split())
 
                     playTime = rowData["start time"] - startTime
-                    songData = {"artist": titlecase(rowData["artist"]), 
+                    songData = {"artist": titlecase(rowData["artist"]),
                                 "song": titlecase(title),
                                 "time": playTime,
                                 "playtime": playTime - previousTime,
@@ -181,28 +180,28 @@ class PlaylistFormatter:
         widthArtist = max(len(row["artist"]) for row in self.playlist)
         widthTitle  = max(len(row["song"])  for row in self.playlist)
         heading = "{:<{widthArtist}s} {:<{widthTitle}s}   {:9s} {:9s} {:9s}".format(
-                    "ARTIST", 
-                    "SONG", 
-                    "TIME", 
+                    "ARTIST",
+                    "SONG",
+                    "TIME",
                     "PLAYTIME",
-                    "STARTTIME", 
-                    widthArtist = widthArtist + 2, 
+                    "STARTTIME",
+                    widthArtist = widthArtist + 2,
                     widthTitle = widthTitle)
-        printBold(heading)
-        printColor("".join(["-"] * len(heading)), colorama.Fore.LIGHTBLACK_EX)
+        print_bold(heading)
+        print_color("".join(["-"] * len(heading)))
 
         for row in self.playlist:
             print("{:<{widthArtist}s} - {:<{widthTitle}s}   {}   {}   {}".format(
-                    row["artist"], 
+                    row["artist"],
                     row["song"],
-                    colorama.Fore.YELLOW + str(row["time"]).split(", ")[-1],
-                    colorama.Fore.GREEN + str(row["playtime"]).split(", ")[-1], 
-                    colorama.Fore.BLUE + row["starttime"].strftime("%H:%M:%S"), 
-                    widthArtist = widthArtist,
-                    widthTitle = widthTitle) + 
-                    colorama.Style.RESET_ALL)  
+                    Color.yellow + str(row["time"]).split(", ")[-1],
+                    Color.green + str(row["playtime"]).split(", ")[-1],
+                    Color.blue + row["starttime"].strftime("%H:%M:%S"),
+                    widthArtist=widthArtist,
+                    widthTitle=widthTitle) +
+                    colorama.Style.RESET_ALL)
 
-        printColor("".join(["-"] * len(heading)) + "\n", colorama.Fore.LIGHTBLACK_EX)
+        print_color("".join(["-"] * len(heading)) + "\n")
 
     # ------------------------------------------------------------------------------
 
@@ -232,7 +231,7 @@ class PlaylistFormatter:
 
     def fillBasso(self, show, startIndex = 0):
         """Fill radioshow playlist to Bassoradio database using Selenium"""
-        printBold("Uploading playlist to dj.basso.fi...", colorama.Fore.RED)
+        print_bold("Uploading playlist to dj.basso.fi...", Color.RED)
         startTime = timer()
 
         if len(self.playlist) <= startIndex:
@@ -242,10 +241,10 @@ class PlaylistFormatter:
         self.openBassoDriver(show)
 
         print("\nFilling playlist for show:")
-        printColor(show, colorama.Fore.CYAN)
+        print_color(show, Color.CYAN)
 
         # input song data
-        printColor("\nAdding songs...", colorama.Fore.MAGENTA)
+        print_color("\nAdding songs...", Color.MAGENTA)
         for index, row in enumerate(self.playlist[startIndex:]):
             inputIndex = 0
             print("  {:d}: {:s} - {:s}".format(index + 1, row["artist"], row["song"]))
@@ -281,12 +280,12 @@ class PlaylistFormatter:
                     submitButton.click()
 
                 except Exception as e:
-                    printColor(str(e), colorama.Fore.RED)
+                    print_color(str(e), Color.RED)
                     continue
                 else:
                     break
 
-        printColor("Done in {:.2f} seconds!".format(timer() - startTime), colorama.Fore.GREEN)
+        print_color("Done in {:.2f} seconds!".format(timer() - startTime), Color.GREEN)
 
     # ------------------------------------------------------------------------------
 
@@ -346,13 +345,13 @@ class PlaylistTool(QMainWindow):
         self.statusbar = self.statusBar()
 
         # menu actions
-        self.exitAct = QAction(self.style().standardIcon(QStyle.SP_MessageBoxCritical), '&Exit', self)        
+        self.exitAct = QAction(self.style().standardIcon(QStyle.SP_MessageBoxCritical), '&Exit', self)
         self.exitAct.setShortcut("Escape") # Ctrl+Q
         self.exitAct.setStatusTip('Exit application')
         self.exitAct.triggered.connect(self.closeEvent)
         self.fileMenu.addAction(self.exitAct)
 
-        self.aboutAct = QAction(self.style().standardIcon(QStyle.SP_MessageBoxQuestion), '&About', self)        
+        self.aboutAct = QAction(self.style().standardIcon(QStyle.SP_MessageBoxQuestion), '&About', self)
         self.aboutAct.setShortcut("Ctrl+I")
         self.aboutAct.setStatusTip('About this application')
         self.aboutAct.triggered.connect(self.aboutEvent)
@@ -434,41 +433,41 @@ class PlaylistTool(QMainWindow):
             event.ignore()
 
     # ------------------------------------------------------------------------------
-    
+
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
             event.setDropAction(Qt.CopyAction)
             event.accept()
         else:
             event.ignore()
-            
+
     # ------------------------------------------------------------------------------
-    
+
     def dropEvent(self, event):
         filename = str(event.mimeData().urls()[0].toLocalFile())
         self.addPlaylist(filename)
 
     # ------------------------------------------------------------------------------
-    
+
     def openPlaylist(self, event):
         filename, _ = QFileDialog.getOpenFileName(self, 'Open playlist', self.defaultPath, "Files (*.csv *.txt *.xlsx *.xlsm)")
         if filename:
             self.addPlaylist(filename)
-    
+
     # ------------------------------------------------------------------------------
-        
+
     def addPlaylist(self, filename):
         self.formatter.readPlaylist(filename)
         for index, row in enumerate(self.formatter.playlist):
             self.list.addTopLevelItem(QTreeWidgetItem((str(index + 1), row["artist"], row["song"], str(row["playtime"]).split(", ")[-1])))
-        
+
         self.playlistFileEdit.setText(str(self.formatter.playlistFile))
         self.playlistNameEdit.setText(str(self.formatter.playlistName))
         self.playlistDateEdit.setText(str(self.formatter.playlistDate))
         self.statusbar.showMessage("Loaded playlist: {}".format(filename), 5000)
 
     # ------------------------------------------------------------------------------
-    
+
     def exportPlaylist(self, event):
         filename, _ = QFileDialog.getSaveFileName(self, 'Save playlist', self.defaultPath + os.sep + self.playlistNameEdit.text())
         if filename:
@@ -476,66 +475,46 @@ class PlaylistTool(QMainWindow):
                 self.formatter.exportCSV(filename)
 
             elif filename.endswith(".txt"):
-                printColor("txt export not implemented yet!", colorama.Fore.RED)
+                print_color("txt export not implemented yet!", Color.RED)
                 return
 
             elif filename.endswith(".xlsx"):
-                printColor("Excel export not implemented yet!", colorama.Fore.RED)
+                print_color("Excel export not implemented yet!", Color.RED)
                 return
 
             else:
                 self.formatter.exportCSV(filename)
 
-            self.statusbar.showMessage("Saved playlist as: {}".format(filename), 5000)     
+            self.statusbar.showMessage("Saved playlist as: {}".format(filename), 5000)
 
     # ------------------------------------------------------------------------------
-    
+
     def fillBasso(self, event):
         self.formatter.fillBasso("Ruff Cut", self.playlistDateEdit.text())
 
     # ------------------------------------------------------------------------------
-   
+
     def chooseFont(self, event):
         font, ok = QFontDialog.getFont()
         if ok:
             self.list.setFont(font)
 
     # ------------------------------------------------------------------------------
-    
+
     def closeEvent(self, event):
         app.quit()
 
     # ------------------------------------------------------------------------------
-    
+
     def aboutEvent(self, event):
-        QMessageBox.about(self, "About", "Playlist Tools\nAkseli Lukkarila\n2018\n\n" + 
-            "Python {:} QT {:} PyQT {:}".format(sys.version.split(" ")[0], 
-                                                QT_VERSION_STR, 
-                                                PYQT_VERSION_STR))
+        QMessageBox.about(self, "About", "Playlist Tools\nAkseli Lukkarila\n2018\n\n" +
+                                f"Python {sys.version.split(' ')[0]} QT {QT_VERSION_STR} PyQT {PYQT_VERSION_STR}")
 
-
-# ==================================================================================
-
-def printBold(text, color = colorama.Fore.WHITE):
-    print(colorama.Style.BRIGHT + color + text + colorama.Style.RESET_ALL)
-
-# ==================================================================================
-
-def printColor(text, color = colorama.Fore.WHITE):
-    print(color + text + colorama.Style.RESET_ALL)
-
-# ==================================================================================
-
-def getColor(text, color = colorama.Fore.WHITE):
-    return color + text + colorama.Style.RESET_ALL
-
-# ==================================================================================
 
 if __name__ == "__main__":
-    colorama.init()
     if len(sys.argv) > 1:
         # arguments given, run on command line
-        printBold("\n///// PLAYLIST FORMATTER /////\n", colorama.Fore.RED)
+        print_bold("\n///// PLAYLIST FORMATTER /////\n", Color.red)
         filename = sys.argv[1]
         outfile = sys.argv[2] if len(sys.argv) == 2 else filename
 
@@ -544,12 +523,13 @@ if __name__ == "__main__":
         formatter.printPlaylist()
 
         print("exporting formatted playlist to:")
-        printColor(outfile, colorama.Fore.YELLOW)
+        print_color(outfile, Color.yellow)
         formatter.exportCSV(outfile)
 
-        printBold("\n/////////// DONE ////////////\n", colorama.Fore.GREEN)
+        print_bold("\n/////////// DONE ////////////\n", Color.green)
 
-    else: # open GUI
+    else:
+        # open GUI
         app = QApplication(sys.argv)
         app.setStyle('Fusion')
 
