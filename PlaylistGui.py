@@ -5,9 +5,24 @@ import sys
 from PyQt5.Qt import PYQT_VERSION_STR, QSizePolicy
 from PyQt5.QtCore import Qt, QT_VERSION_STR
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (QWidget, QFileDialog, QStyle, QTreeWidgetItem, QHeaderView,
-                             QMainWindow, QAbstractItemView, QGridLayout, QAction, QMessageBox,
-                             QDesktopWidget, QPushButton, QFontDialog, QLineEdit, QLabel, QTreeWidget)
+from PyQt5.QtWidgets import (
+    QWidget,
+    QFileDialog,
+    QStyle,
+    QTreeWidgetItem,
+    QHeaderView,
+    QMainWindow,
+    QAbstractItemView,
+    QGridLayout,
+    QAction,
+    QMessageBox,
+    QDesktopWidget,
+    QPushButton,
+    QFontDialog,
+    QLineEdit,
+    QLabel,
+    QTreeWidget,
+)
 
 from PlaylistFormatter import PlaylistFormatter
 from colorprint import print_color, Color
@@ -22,7 +37,7 @@ class PlaylistGui(QMainWindow):
         if self.platform == "darwin":  # MacOS
             self.defaultPath = os.path.expanduser("~/Dropbox")
         else:
-            self.defaultPath = 'D:/Dropbox'
+            self.defaultPath = "D:/Dropbox"
 
         self.about_act = None
         self.basso_button = None
@@ -61,21 +76,25 @@ class PlaylistGui(QMainWindow):
 
         # menubar
         self.menubar = self.menuBar()
-        self.file_menu = self.menubar.addMenu('&File')
-        self.view_menu = self.menubar.addMenu('&View')
-        self.help_menu = self.menubar.addMenu('&Help')
+        self.file_menu = self.menubar.addMenu("&File")
+        self.view_menu = self.menubar.addMenu("&View")
+        self.help_menu = self.menubar.addMenu("&Help")
         self.statusbar = self.statusBar()
 
         # menu actions
-        self.exit_act = QAction(self.style().standardIcon(QStyle.SP_MessageBoxCritical), '&Exit', self)
+        self.exit_act = QAction(
+            self.style().standardIcon(QStyle.SP_MessageBoxCritical), "&Exit", self
+        )
         self.exit_act.setShortcut("Escape")
-        self.exit_act.setStatusTip('Exit application')
+        self.exit_act.setStatusTip("Exit application")
         self.exit_act.triggered.connect(self.closeEvent)
         self.file_menu.addAction(self.exit_act)
 
-        self.about_act = QAction(self.style().standardIcon(QStyle.SP_MessageBoxQuestion), '&About', self)
+        self.about_act = QAction(
+            self.style().standardIcon(QStyle.SP_MessageBoxQuestion), "&About", self
+        )
         self.about_act.setShortcut("Ctrl+I")
-        self.about_act.setStatusTip('About this application')
+        self.about_act.setStatusTip("About this application")
         self.about_act.triggered.connect(self.about_event)
         self.help_menu.addAction(self.about_act)
 
@@ -84,20 +103,24 @@ class PlaylistGui(QMainWindow):
         self.view_menu.addAction(self.font_act)
 
         # buttons
-        self.open_button = QPushButton('Open playlist', self)
-        self.open_button.setToolTip('Open playlist filedialog')
+        self.open_button = QPushButton("Open playlist", self)
+        self.open_button.setToolTip("Open playlist filedialog")
         self.open_button.clicked.connect(self.open_playlist)
         self.open_button.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
 
-        self.export_button = QPushButton('Save playlist', self)
-        self.export_button.setToolTip('Export playlist to file')
+        self.export_button = QPushButton("Save playlist", self)
+        self.export_button.setToolTip("Export playlist to file")
         self.export_button.clicked.connect(self.export_playlist)
-        self.export_button.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
+        self.export_button.setStyleSheet(
+            "QPushButton { font: bold 16px; height: 50px; }"
+        )
 
-        self.basso_button = QPushButton('Upload to Basso', self)
-        self.basso_button.setToolTip('Fill playlist to dj.Basso.fi')
+        self.basso_button = QPushButton("Upload to Basso", self)
+        self.basso_button.setToolTip("Fill playlist to dj.Basso.fi")
         self.basso_button.clicked.connect(self.fill_basso)
-        self.basso_button.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
+        self.basso_button.setStyleSheet(
+            "QPushButton { font: bold 16px; height: 50px; }"
+        )
 
         # line edits
         self.playlist_name_label = QLabel("Playlist Name")
@@ -110,7 +133,7 @@ class PlaylistGui(QMainWindow):
 
         # list view
         self.list = QTreeWidget()
-        self.list.setFont(QFont('Consolas', 9))
+        self.list.setFont(QFont("Consolas", 9))
         self.list.setStyleSheet("QTreeView::item { margin: 2px; }")
         self.list.setAlternatingRowColors(True)
         self.list.setAcceptDrops(True)
@@ -147,14 +170,26 @@ class PlaylistGui(QMainWindow):
         self.setCentralWidget(self.main_widget)
 
     def about_event(self, event):
-        QMessageBox.about(self, "About", "Playlist Tools\nAkseli Lukkarila\n2018\n\n" +
-                          f"Python {sys.version.split(' ')[0]} QT {QT_VERSION_STR} PyQT {PYQT_VERSION_STR}")
+        QMessageBox.about(
+            self,
+            "About",
+            "Playlist Tools\nAkseli Lukkarila\n2018\n\n"
+            + f"Python {sys.version.split(' ')[0]} QT {QT_VERSION_STR} PyQT {PYQT_VERSION_STR}",
+        )
 
     def add_playlist(self, filename):
         self.formatter.read_playlist(filename)
         for index, row in enumerate(self.formatter.playlist):
             self.list.addTopLevelItem(
-                QTreeWidgetItem((str(index + 1), row["artist"], row["song"], str(row["playtime"]).split(", ")[-1])))
+                QTreeWidgetItem(
+                    (
+                        str(index + 1),
+                        row["artist"],
+                        row["song"],
+                        str(row["playtime"]).split(", ")[-1],
+                    )
+                )
+            )
 
         self.playlist_file_edit.setText(str(self.formatter.playlist_file))
         self.playlist_name_edit.setText(str(self.formatter.playlist_name))
@@ -167,8 +202,11 @@ class PlaylistGui(QMainWindow):
             self.list.setFont(font)
 
     def export_playlist(self, event):
-        filename, _ = QFileDialog.getSaveFileName(self, 'Save playlist',
-                                                  self.defaultPath + os.sep + self.playlist_name_edit.text())
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save playlist",
+            self.defaultPath + os.sep + self.playlist_name_edit.text(),
+        )
         if filename:
             if filename.endswith(".csv"):
                 self.formatter.export_csv(filename)
@@ -190,8 +228,9 @@ class PlaylistGui(QMainWindow):
         self.formatter.fill_basso("Ruff Cut", self.playlist_date_edit.text())
 
     def open_playlist(self, event):
-        filename, _ = QFileDialog.getOpenFileName(self, 'Open playlist', self.defaultPath,
-                                                  "Files (*.csv *.txt *.xlsx *.xlsm)")
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Open playlist", self.defaultPath, "Files (*.csv *.txt *.xlsx *.xlsm)"
+        )
         if filename:
             self.add_playlist(filename)
 

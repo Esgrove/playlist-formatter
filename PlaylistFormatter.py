@@ -70,7 +70,9 @@ class PlaylistFormatter:
                     self.playlist_date = row_data["start time"].split(",")[0]
                     continue
 
-                time_string = row_data["start time"].replace(".", ":").strip().split(" ")[0]
+                time_string = (
+                    row_data["start time"].replace(".", ":").strip().split(" ")[0]
+                )
                 row_data["start time"] = datetime.strptime(time_string, "%H:%M:%S")
 
                 if index == 1:
@@ -82,7 +84,9 @@ class PlaylistFormatter:
 
                 title = title.replace("(Clean)", "").replace("(clean)", "")
                 title = title.replace("(Dirty)", "").replace("(dirty)", "")
-                title = title.replace("(Original Mix)", "").replace("(original Mix)", "")
+                title = title.replace("(Original Mix)", "").replace(
+                    "(original Mix)", ""
+                )
                 title = title.replace("(Dirty-", "(").replace("(dirty-", "(")
                 title = title.replace("(Clean-", "(").replace("(clean-", "(")
                 title = title.replace(" )", ")")
@@ -92,18 +96,23 @@ class PlaylistFormatter:
                 title = " ".join(title.split())
 
                 play_time = row_data["start time"] - start_time
-                song_data = {"artist": titlecase(row_data["artist"]),
-                             "song": titlecase(title),
-                             "time": play_time,
-                             "playtime": play_time - previous_time,
-                             "starttime": row_data["start time"]}
+                song_data = {
+                    "artist": titlecase(row_data["artist"]),
+                    "song": titlecase(title),
+                    "time": play_time,
+                    "playtime": play_time - previous_time,
+                    "starttime": row_data["start time"],
+                }
 
                 if song_data["playtime"] < timedelta(seconds=60):
                     song_data["playtime"] = timedelta(seconds=60)
 
                 # sum duplicate song playtimes
-                if playlist_index and playlist[playlist_index - 1]["song"] == song_data["song"] and \
-                        playlist[playlist_index - 1]["artist"] == song_data["artist"]:
+                if (
+                    playlist_index
+                    and playlist[playlist_index - 1]["song"] == song_data["song"]
+                    and playlist[playlist_index - 1]["artist"] == song_data["artist"]
+                ):
                     playlist[playlist_index - 1]["playtime"] += song_data["playtime"]
 
                 else:
@@ -136,14 +145,20 @@ class PlaylistFormatter:
         out_file = os.path.join(self.filepath, out_filename)
         with open(out_file, "w", newline="") as csvFile:
             csv_writer = csv.writer(csvFile, delimiter=",")
-            csv_writer.writerow(["Artist", "", "Song", "Time", "Playtime", "Start time"])
+            csv_writer.writerow(
+                ["Artist", "", "Song", "Time", "Playtime", "Start time"]
+            )
             for row in self.playlist:
-                csv_writer.writerow([row["artist"],
-                                     "-",
-                                     row["song"],
-                                     str(row["time"]).split(", ")[-1],
-                                     str(row["playtime"]).split(", ")[-1],
-                                     row["starttime"].strftime("%H:%M:%S")])
+                csv_writer.writerow(
+                    [
+                        row["artist"],
+                        "-",
+                        row["song"],
+                        str(row["time"]).split(", ")[-1],
+                        str(row["playtime"]).split(", ")[-1],
+                        row["starttime"].strftime("%H:%M:%S"),
+                    ]
+                )
 
     def print_playlist(self):
         if not self.playlist:
@@ -158,20 +173,24 @@ class PlaylistFormatter:
             "PLAYTIME",
             "STARTTIME",
             width_artist=width_artist + 2,
-            width_title=width_title)
+            width_title=width_title,
+        )
         print_bold(heading)
         print_color("".join(["-"] * len(heading)))
 
         for row in self.playlist:
-            print("{:<{width_artist}s} - {:<{width_title}s}   {}   {}   {}".format(
-                row["artist"],
-                row["song"],
-                Color.yellow + str(row["time"]).split(", ")[-1],
-                Color.green + str(row["playtime"]).split(", ")[-1],
-                Color.blue + row["starttime"].strftime("%H:%M:%S"),
-                width_artist=width_artist,
-                width_title=width_title) +
-                  colorama.Style.RESET_ALL)
+            print(
+                "{:<{width_artist}s} - {:<{width_title}s}   {}   {}   {}".format(
+                    row["artist"],
+                    row["song"],
+                    Color.yellow + str(row["time"]).split(", ")[-1],
+                    Color.green + str(row["playtime"]).split(", ")[-1],
+                    Color.blue + row["starttime"].strftime("%H:%M:%S"),
+                    width_artist=width_artist,
+                    width_title=width_title,
+                )
+                + colorama.Style.RESET_ALL
+            )
 
         print_color("".join(["-"] * len(heading)) + "\n")
 
@@ -188,12 +207,15 @@ class PlaylistFormatter:
         width_title = max(len(row["song"]) for row in self.playlist)
 
         for row in self.playlist:
-            playlist.append("{:<{widthArtist}s} - {:<{widthTitle}s}   {}".format(
-                row["artist"],
-                row["song"],
-                str(row["time"]).split(", ")[-1],
-                widthArtist=width_artist,
-                widthTitle=width_title))
+            playlist.append(
+                "{:<{widthArtist}s} - {:<{widthTitle}s}   {}".format(
+                    row["artist"],
+                    row["song"],
+                    str(row["time"]).split(", ")[-1],
+                    widthArtist=width_artist,
+                    widthTitle=width_title,
+                )
+            )
 
         return playlist
 
@@ -222,37 +244,63 @@ class PlaylistFormatter:
                 try:
                     time.sleep(0.5)
                     find_track = WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "find-track-textfield")))
+                        EC.presence_of_element_located((By.ID, "find-track-textfield"))
+                    )
                     find_track.send_keys(row["artist"][:input_index])
 
                     WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "new-track-entry-form")))
+                        EC.presence_of_element_located((By.ID, "new-track-entry-form"))
+                    )
 
                     artist = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.artist']")))
+                        EC.element_to_be_clickable(
+                            (By.CSS_SELECTOR, "[ng-model*='newTrack.artist']")
+                        )
+                    )
                     time.sleep(0.5)
                     artist.send_keys(row["artist"][input_index:])
 
                     song = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.title']")))
+                        EC.element_to_be_clickable(
+                            (By.CSS_SELECTOR, "[ng-model*='newTrack.title']")
+                        )
+                    )
                     song.send_keys(row["song"])
 
                     mins = row["playtime"].seconds // 60
                     minutes = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.minutes']")))
+                        EC.element_to_be_clickable(
+                            (By.CSS_SELECTOR, "[ng-model*='newTrack.minutes']")
+                        )
+                    )
                     minutes.send_keys(mins)
 
                     secs = row["playtime"].seconds % 60
                     seconds = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, "[ng-model*='newTrack.seconds']")))
+                        EC.element_to_be_clickable(
+                            (By.CSS_SELECTOR, "[ng-model*='newTrack.seconds']")
+                        )
+                    )
                     seconds.send_keys(secs)
 
-                    save = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
-                        (By.XPATH, "//input[@type='button' and @value='Tallenna uusi biisi']")))
+                    save = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable(
+                            (
+                                By.XPATH,
+                                "//input[@type='button' and @value='Tallenna uusi biisi']",
+                            )
+                        )
+                    )
                     save.click()
 
-                    submit_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
-                        (By.XPATH, "//input[@type='submit' and @value='Lisää biisilistaan']")))
+                    submit_button = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable(
+                            (
+                                By.XPATH,
+                                "//input[@type='submit' and @value='Lisää biisilistaan']",
+                            )
+                        )
+                    )
                     submit_button.click()
 
                 except Exception as e:
@@ -274,7 +322,9 @@ class PlaylistFormatter:
         self.driver.find_element_by_id("broadcast-title-clear").click()
 
         # select correct show
-        select = Select(self.driver.find_element_by_css_selector("[ng-model*='play.broadcast']"))
+        select = Select(
+            self.driver.find_element_by_css_selector("[ng-model*='play.broadcast']")
+        )
         select.select_by_visible_text(show)
 
     @staticmethod

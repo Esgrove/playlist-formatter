@@ -27,7 +27,7 @@ if __name__ == "__main__":
     else:
         # open GUI
         app = QApplication(sys.argv)
-        app.setStyle('Fusion')
+        app.setStyle("Fusion")
 
         # colors
         palette = QPalette()
