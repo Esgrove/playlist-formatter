@@ -1,5 +1,9 @@
+"""
+Playlist Formatter GUI
+Akseli Lukkarila
+2018-2023
+"""
 import os
-import platform
 import sys
 
 from PyQt6.QtCore import PYQT_VERSION_STR, QT_VERSION_STR, Qt
@@ -23,8 +27,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from colorprint import Color, print_color
-from PlaylistFormatter import PlaylistFormatter
+from PlaylistFormatter.colorprint import Color, print_color
+from PlaylistFormatter.Platform import Platform
+from PlaylistFormatter.PlaylistFormatter import PlaylistFormatter
 
 
 class PlaylistGui(QMainWindow):
@@ -32,11 +37,8 @@ class PlaylistGui(QMainWindow):
         super().__init__()
 
         self.formatter = PlaylistFormatter()
-        self.platform = platform.system().lower()
-        if self.platform == "darwin":  # MacOS
-            self.defaultPath = os.path.expanduser("~/Dropbox")
-        else:
-            self.defaultPath = "D:/Dropbox"
+        self.platform = Platform.get()
+        self.defaultPath = self.platform.dropbox_path()
 
         self.about_act = None
         self.basso_button = None

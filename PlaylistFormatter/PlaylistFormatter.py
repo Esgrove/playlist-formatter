@@ -1,7 +1,7 @@
 """
 Playlist Formatter Tool
 Akseli Lukkarila
-2018
+2018-2023
 """
 import csv
 import os
@@ -15,7 +15,7 @@ import chardet
 import colorama
 from titlecase import titlecase
 
-from colorprint import Color, get_color, print_bold, print_color
+from PlaylistFormatter.colorprint import Color, get_color, print_bold, print_color
 
 
 class PlaylistType(Enum):

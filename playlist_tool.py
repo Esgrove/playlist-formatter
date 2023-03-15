@@ -1,18 +1,12 @@
+#!/usr/bin/env python3
 import sys
 
-from PlaylistFormatter import PlaylistFormatter
-from PlaylistGui import run_gui
+from PlaylistFormatter.PlaylistCli import run_cli
+from PlaylistFormatter.PlaylistGui import run_gui
 
 if __name__ == "__main__":
+    # arguments given, run on command line
     if len(sys.argv) > 1:
-        # arguments given, run on command line
-        args = sys.argv[1:]
-        filename = args[0]
-        outfile = args[1] if len(args) >= 2 else None
-
-        formatter = PlaylistFormatter()
-        formatter.read_playlist(filename)
-        formatter.print_playlist()
-        formatter.export_csv(outfile)
+        run_cli()
     else:
         run_gui()

@@ -1,7 +1,7 @@
 [tool.black]
 # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
 line-length = 120
-target-version = ["py39", "py310", "py311"]
+target-version = ["py311"]
 include = '\.pyi?$'
 extend-exclude = '''venv*'''
 
@@ -16,14 +16,14 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 120
-py_version = 39
+py_version = 311
 sections=["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 extend_skip = [".idea", ".vscode", ".venv", "venv"]
 extend_skip_glob = ["venv*/"]
 
 [tool.ruff]
 # https://github.com/charliermarsh/ruff#configuration
-target-version = "py39"
+target-version = "py311"
 line-length = 120
 select = ["E", "F", "W", "I", "N", "UP"]
 ignore = []
