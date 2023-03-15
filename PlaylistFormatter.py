@@ -5,43 +5,52 @@ Akseli Lukkarila
 """
 import csv
 import os
-import platform
-import time
+import sys
 from datetime import datetime, timedelta
-from timeit import default_timer as timer
+from enum import Enum, auto
 
 import colorama
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select, WebDriverWait
+import chardet
 from titlecase import titlecase
+from pathlib import Path
 
-from colorprint import Color, get_color, print_color, print_bold
+from typing import Optional
+
+from colorprint import Color, get_color, print_color, print_bold, print_yellow, print_green
+
+
+class PlaylistType(Enum):
+    SERATO = auto()
+    REKORDBOX = auto()
+
+
+class Track:
+    def __init__(self, artist: str, title: str, relative_time: datetime = None, start_time: datetime = None, play_time: datetime = None):
+        self.artist = " ".join(artist.strip().split())
+        self.title = " ".join(title.strip().split())
+        self.time = relative_time
+        self.start_time = start_time
+        self.play_time = play_time
 
 
 class PlaylistFormatter:
     """Reads a playlist text file and creates correctly formatted csv or excel."""
 
     def __init__(self):
-        self.playlist_file = None
-        self.playlist_date = None
-        self.playlist_name = ""
-        self.filepath = ""
         self.filename = ""
+        self.filepath = ""
         self.filetype = ""
-        self.playlist = []
-        self.driver = None
-        if platform.system().lower() == "darwin":  # MacOS
-            self.driverPath = "/usr/local/bin/chromedriver"
-        else:
-            self.driverPath = "C:\\ProgramData\\chocolatey\\bin\\chromedriver.exe"
+        self.playlist: list[Track] = []
+        self.playlist_date = None
+        self.playlist_file = None
+        self.playlist_name = ""
+        self.playlist_type: Optional[PlaylistType] = None
 
-    def read_playlist(self, filename):
+    def read_playlist(self, filename: str):
         if not os.path.isfile(filename):
             raise RuntimeError("File does not exist.")
 
-        print(f"reading playlist {get_color(filename, Color.yellow)}\n")
+        print(f"Reading playlist: {get_color(filename, Color.yellow)}")
         self.filepath, self.filename = os.path.split(filename)
         self.filename, self.filetype = os.path.splitext(self.filename)
         self.filetype = self.filetype.strip().lower()
@@ -54,11 +63,48 @@ class PlaylistFormatter:
         else:
             raise RuntimeError(f"Unsupported filetype '{self.filetype}'!")
 
-        self.print_playlist()
+    @staticmethod
+    def _format_title(title: str) -> str:
+        """Format song title."""
+
+        title = title.replace(" (Clean)", "").replace(" (clean)", "")
+        title = title.replace(" (Dirty)", "").replace(" (dirty)", "")
+        title = title.replace(" (Original Mix)", "").replace(" (original mix)", "")
+        title = title.replace(" (Dirty-", " (").replace(" (dirty-", " (")
+        title = title.replace(" (Clean-", " (").replace(" (clean-", " (")
+
+        # TODO: clean this up
+        if " - " in title:
+            dash_index = title.index(" - ")
+            if " (" in title and ")" in title:
+                parenthesis_start = title.index(" (")
+                parenthesis_end = title.index(")")
+                if parenthesis_start < dash_index < parenthesis_end:
+                    title = title.replace(" - ", " ")
+                else:
+                    # If there are more parentheses in the title,
+                    # insert the closing parenthesis before the existing one
+                    if " (" in title[dash_index:] and ")" in title[dash_index:]:
+                        opening_parenthesis_index = dash_index + title[dash_index:].index(" (")
+                        title_before = title[:opening_parenthesis_index]
+                        title_after = title[opening_parenthesis_index:]
+                        title = title_before + ")" + title_after
+                    else:
+                        title = title + ")"
+
+                    title = title.replace(" - ", " (")
+            else:
+                title = title.replace(" - ", " (")
+                title = title + ")"
+
+        # split at all whitespace chars and recombine -> remove extra spaces and linebreaks...
+        title = " ".join(title.split())
+
+        return title
 
     def _read_csv(self, filename):
-        with open(filename) as csvFile:
-            playlist_data = csv.DictReader(csvFile)
+        with open(filename) as csv_file:
+            playlist_data = csv.DictReader(csv_file)
 
             previous_time = timedelta()
             playlist = []
@@ -79,21 +125,7 @@ class PlaylistFormatter:
                     start_time = row_data["start time"]
 
                 title = row_data["name"]
-                if " - " in title:
-                    title = title.replace(" - ", " (") + ")"
-
-                title = title.replace("(Clean)", "").replace("(clean)", "")
-                title = title.replace("(Dirty)", "").replace("(dirty)", "")
-                title = title.replace("(Original Mix)", "").replace(
-                    "(original Mix)", ""
-                )
-                title = title.replace("(Dirty-", "(").replace("(dirty-", "(")
-                title = title.replace("(Clean-", "(").replace("(clean-", "(")
-                title = title.replace(" )", ")")
-                title = title.replace("( ", "(")
-
-                # split at all whitespace chars and recombine -> remove extra spaces and linebreaks...
-                title = " ".join(title.split())
+                title = self._format_title(title)
 
                 play_time = row_data["start time"] - start_time
                 song_data = {
@@ -107,14 +139,13 @@ class PlaylistFormatter:
                 if song_data["playtime"] < timedelta(seconds=60):
                     song_data["playtime"] = timedelta(seconds=60)
 
-                # sum duplicate song playtimes
+                # sum duplicate song play times
                 if (
                     playlist_index
                     and playlist[playlist_index - 1]["song"] == song_data["song"]
                     and playlist[playlist_index - 1]["artist"] == song_data["artist"]
                 ):
                     playlist[playlist_index - 1]["playtime"] += song_data["playtime"]
-
                 else:
                     playlist.append(song_data)
                     playlist_index += 1
@@ -125,14 +156,47 @@ class PlaylistFormatter:
 
             self.playlist = playlist
             self.playlist_file = filename
+            self.playlist_type = PlaylistType.SERATO
 
-    def _read_xls(self, filename):
+    def _read_xls(self, filename: str):
         # TODO
         raise NotImplementedError
 
-    def _read_txt(self, filename):
-        # TODO
-        raise NotImplementedError
+    def _read_txt(self, filename: str):
+        filepath = Path(filename)
+        if not filepath.exists():
+            sys.exit(f"File does not exist: {filename}")
+
+        raw_data = filepath.read_bytes()
+        detection = chardet.detect(raw_data)
+        encoding = detection["encoding"]
+        confidence = detection["confidence"]
+        print(f"Encoding: {encoding} ({confidence})")
+        with open(filename, encoding=encoding) as txt_file:
+            lines = txt_file.readlines()
+
+        if not lines:
+            raise RuntimeError(f"File is empty: {filename}")
+
+        # Rekordbox txt
+        if lines[0].startswith("#"):
+            self.playlist_type = PlaylistType.REKORDBOX
+            playlist = []
+            # Rekordbox output:
+            # Track, Title, Artist, BPM, Time, Key, Genre, Date Added
+            for row in lines[1:]:
+                data = row.split("\t")
+                artist = data[2]
+                title = self._format_title(data[1])
+                track = {"artist": artist, "song": title}
+                # skip duplicate tracks
+                if len(playlist) < 1 or playlist[-1] != track:
+                    playlist.append(track)
+        else:
+            raise NotImplementedError
+
+        self.playlist = playlist
+        self.playlist_file = filename
 
     def export_csv(self, filename=None):
         if not self.playlist:
@@ -142,57 +206,99 @@ class PlaylistFormatter:
         if not out_filename.endswith(".csv"):
             out_filename += ".csv"
 
+        print(f"Exporting as: {get_color(out_filename, Color.green)}")
+
         out_file = os.path.join(self.filepath, out_filename)
-        with open(out_file, "w", newline="") as csvFile:
-            csv_writer = csv.writer(csvFile, delimiter=",")
-            csv_writer.writerow(
-                ["Artist", "", "Song", "Time", "Playtime", "Start time"]
-            )
-            for row in self.playlist:
+        with open(out_file, "w", newline="") as csv_file:
+            csv_writer = csv.writer(csv_file, delimiter=",")
+            if self.playlist_type == PlaylistType.REKORDBOX:
                 csv_writer.writerow(
-                    [
-                        row["artist"],
-                        "-",
-                        row["song"],
-                        str(row["time"]).split(", ")[-1],
-                        str(row["playtime"]).split(", ")[-1],
-                        row["starttime"].strftime("%H:%M:%S"),
-                    ]
+                    ["Artist", "", "Song"]
                 )
+                for row in self.playlist:
+                    csv_writer.writerow(
+                        [
+                            row["artist"],
+                            "-",
+                            row["song"],
+                        ]
+                    )
+            else:
+                csv_writer.writerow(
+                    ["Artist", "", "Song", "Time", "Playtime", "Start time"]
+                )
+                for row in self.playlist:
+                    csv_writer.writerow(
+                        [
+                            row["artist"],
+                            "-",
+                            row["song"],
+                            str(row["time"]).split(", ")[-1],
+                            str(row["playtime"]).split(", ")[-1],
+                            row["starttime"].strftime("%H:%M:%S"),
+                        ]
+                    )
 
     def print_playlist(self):
         if not self.playlist:
             raise RuntimeError("No playlist. Read a playlist first!")
 
+        total_tracks = len(self.playlist)
+        print(f"Printing playlist: {self.playlist_name if self.playlist_name else self.filename} ({get_color(self.playlist_type.name, Color.cyan)})")
+        print(f"Total tracks: {total_tracks}")
+
         width_artist = max(len(row["artist"]) for row in self.playlist)
         width_title = max(len(row["song"]) for row in self.playlist)
-        heading = "{:<{width_artist}s} {:<{width_title}s}   {:9s} {:9s} {:9s}".format(
-            "ARTIST",
-            "SONG",
-            "TIME",
-            "PLAYTIME",
-            "STARTTIME",
-            width_artist=width_artist + 2,
-            width_title=width_title,
-        )
-        print_bold(heading)
-        print_color("".join(["-"] * len(heading)))
 
-        for row in self.playlist:
-            print(
-                "{:<{width_artist}s} - {:<{width_title}s}   {}   {}   {}".format(
-                    row["artist"],
-                    row["song"],
-                    Color.yellow + str(row["time"]).split(", ")[-1],
-                    Color.green + str(row["playtime"]).split(", ")[-1],
-                    Color.blue + row["starttime"].strftime("%H:%M:%S"),
-                    width_artist=width_artist,
-                    width_title=width_title,
-                )
-                + colorama.Style.RESET_ALL
+        if self.playlist_type == PlaylistType.REKORDBOX:
+            heading = "{:<{width_artist}s} {:<{width_title}s}".format(
+                "ARTIST",
+                "SONG",
+                width_artist=width_artist + 2,
+                width_title=width_title,
             )
+            print_bold(heading)
+            print_color("".join(["-"] * len(heading)))
 
-        print_color("".join(["-"] * len(heading)) + "\n")
+            for number, track in enumerate(self.playlist, 1):
+                print(
+                    "{:>{width_number}d}: {:<{width_artist}s} - {:<{width_title}s}".format(
+                        number,
+                        track["artist"],
+                        track["song"],
+                        width_number=len(str(total_tracks)),
+                        width_artist=width_artist,
+                        width_title=width_title,
+                    )
+                )
+        else:
+            heading = "{:<{width_artist}s} {:<{width_title}s}   {:9s} {:9s} {:9s}".format(
+                "ARTIST",
+                "SONG",
+                "TIME",
+                "PLAYTIME",
+                "STARTTIME",
+                width_artist=width_artist + 2,
+                width_title=width_title,
+            )
+            print_bold(heading)
+            print_color("".join(["-"] * len(heading)))
+
+            for row in self.playlist:
+                print(
+                    "{:<{width_artist}s} - {:<{width_title}s}   {}   {}   {}".format(
+                        row["artist"],
+                        row["song"],
+                        Color.yellow + str(row["time"]).split(", ")[-1],
+                        Color.green + str(row["playtime"]).split(", ")[-1],
+                        Color.blue + row["starttime"].strftime("%H:%M:%S"),
+                        width_artist=width_artist,
+                        width_title=width_title,
+                    )
+                    + colorama.Style.RESET_ALL
+                )
+
+        print_color("".join(["-"] * len(heading)))
 
     def format_playlist(self):
         """
@@ -218,115 +324,3 @@ class PlaylistFormatter:
             )
 
         return playlist
-
-    def fill_basso(self, show, start_index=0):
-        """Fill radioshow playlist to Bassoradio database using Selenium."""
-        print_bold("Uploading playlist to dj.basso.fi...", Color.red)
-        start_time = timer()
-
-        if len(self.playlist) <= start_index:
-            print("Index not valid.")
-            return
-
-        self.open_basso_driver(show)
-
-        print("\nFilling playlist for show:")
-        print_color(show, Color.cyan)
-
-        # input song data
-        print_color("\nAdding songs...", Color.magenta)
-        for index, row in enumerate(self.playlist[start_index:]):
-            input_index = 0
-            print("  {:d}: {:s} - {:s}".format(index + 1, row["artist"], row["song"]))
-            while True:
-                # increase index so we don't send the first letter multiple times when trying again
-                input_index += 1
-                try:
-                    time.sleep(0.5)
-                    find_track = WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "find-track-textfield"))
-                    )
-                    find_track.send_keys(row["artist"][:input_index])
-
-                    WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "new-track-entry-form"))
-                    )
-
-                    artist = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable(
-                            (By.CSS_SELECTOR, "[ng-model*='newTrack.artist']")
-                        )
-                    )
-                    time.sleep(0.5)
-                    artist.send_keys(row["artist"][input_index:])
-
-                    song = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable(
-                            (By.CSS_SELECTOR, "[ng-model*='newTrack.title']")
-                        )
-                    )
-                    song.send_keys(row["song"])
-
-                    mins = row["playtime"].seconds // 60
-                    minutes = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable(
-                            (By.CSS_SELECTOR, "[ng-model*='newTrack.minutes']")
-                        )
-                    )
-                    minutes.send_keys(mins)
-
-                    secs = row["playtime"].seconds % 60
-                    seconds = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable(
-                            (By.CSS_SELECTOR, "[ng-model*='newTrack.seconds']")
-                        )
-                    )
-                    seconds.send_keys(secs)
-
-                    save = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable(
-                            (
-                                By.XPATH,
-                                "//input[@type='button' and @value='Tallenna uusi biisi']",
-                            )
-                        )
-                    )
-                    save.click()
-
-                    submit_button = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable(
-                            (
-                                By.XPATH,
-                                "//input[@type='submit' and @value='Lisää biisilistaan']",
-                            )
-                        )
-                    )
-                    submit_button.click()
-
-                except Exception as e:
-                    print_color(str(e), Color.red)
-                    continue
-                else:
-                    break
-
-        print_color(f"Done in {timer() - start_time:.2f} seconds!", Color.green)
-
-    def open_basso_driver(self, show):
-        if not self.driver:
-            # open webdriver if not already open
-            self.driver = webdriver.Chrome(executable_path=self.driverPath)
-
-        self.driver.get("Basso website here...")
-
-        # clear current show
-        self.driver.find_element_by_id("broadcast-title-clear").click()
-
-        # select correct show
-        select = Select(
-            self.driver.find_element_by_css_selector("[ng-model*='play.broadcast']")
-        )
-        select.select_by_visible_text(show)
-
-    @staticmethod
-    def get_show_string(date, show_name):
-        return f"{date} 20:00-22:00 LIVE {show_name}"

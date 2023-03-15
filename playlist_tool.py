@@ -11,19 +11,14 @@ from colorprint import print_bold, print_color, Color
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         # arguments given, run on command line
-        print_bold("\n///// PLAYLIST FORMATTER /////\n", Color.red)
-        filename = sys.argv[1]
-        outfile = sys.argv[2] if len(sys.argv) == 2 else filename
+        args = sys.argv[1:]
+        filename = args[0]
+        outfile = args[1] if len(args) >= 2 else None
 
         formatter = PlaylistFormatter()
         formatter.read_playlist(filename)
         formatter.print_playlist()
-
-        print("exporting formatted playlist to:")
-        print_color(outfile, Color.yellow)
         formatter.export_csv(outfile)
-
-        print_bold("\n/////////// DONE ////////////\n", Color.green)
     else:
         # open GUI
         app = QApplication(sys.argv)
