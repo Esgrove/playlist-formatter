@@ -24,6 +24,10 @@ from PyQt5.QtWidgets import (
     QTreeWidget,
 )
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtWidgets import QApplication
+
 from PlaylistFormatter import PlaylistFormatter
 from colorprint import print_color, Color
 
@@ -253,3 +257,32 @@ class PlaylistGui(QMainWindow):
 
     def closeEvent(self, event):
         self.quit()
+
+
+def RunGui():
+    # open GUI
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+
+    # colors
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(205, 0, 0))
+    palette.setColor(QPalette.WindowText, Qt.white)
+    palette.setColor(QPalette.Base, QColor(15, 15, 15))
+    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(QPalette.ToolTipBase, Qt.white)
+    palette.setColor(QPalette.ToolTipText, Qt.white)
+    palette.setColor(QPalette.Text, Qt.white)
+    palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    palette.setColor(QPalette.ButtonText, Qt.white)
+    palette.setColor(QPalette.BrightText, Qt.red)
+    palette.setColor(QPalette.Highlight, QColor(205, 205, 205).lighter())
+    palette.setColor(QPalette.HighlightedText, Qt.black)
+    app.setPalette(palette)
+
+    # run tool
+    tool = PlaylistGui()
+    tool.show()
+
+    # wait for exit
+    sys.exit(app.exec_())
