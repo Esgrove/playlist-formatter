@@ -8,15 +8,14 @@ import os
 import sys
 from datetime import datetime, timedelta
 from enum import Enum, auto
-
-import colorama
-import chardet
-from titlecase import titlecase
 from pathlib import Path
-
 from typing import Optional
 
-from colorprint import Color, get_color, print_color, print_bold, print_yellow, print_green
+import chardet
+import colorama
+from titlecase import titlecase
+
+from colorprint import Color, get_color, print_bold, print_color
 
 
 class PlaylistType(Enum):
@@ -25,7 +24,14 @@ class PlaylistType(Enum):
 
 
 class Track:
-    def __init__(self, artist: str, title: str, relative_time: datetime = None, start_time: datetime = None, play_time: datetime = None):
+    def __init__(
+        self,
+        artist: str,
+        title: str,
+        relative_time: datetime = None,
+        start_time: datetime = None,
+        play_time: datetime = None,
+    ):
         self.artist = " ".join(artist.strip().split())
         self.title = " ".join(title.strip().split())
         self.time = relative_time
@@ -116,9 +122,7 @@ class PlaylistFormatter:
                     self.playlist_date = row_data["start time"].split(",")[0]
                     continue
 
-                time_string = (
-                    row_data["start time"].replace(".", ":").strip().split(" ")[0]
-                )
+                time_string = row_data["start time"].replace(".", ":").strip().split(" ")[0]
                 row_data["start time"] = datetime.strptime(time_string, "%H:%M:%S")
 
                 if index == 1:
@@ -212,9 +216,7 @@ class PlaylistFormatter:
         with open(out_file, "w", newline="") as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=",")
             if self.playlist_type == PlaylistType.REKORDBOX:
-                csv_writer.writerow(
-                    ["Artist", "", "Song"]
-                )
+                csv_writer.writerow(["Artist", "", "Song"])
                 for row in self.playlist:
                     csv_writer.writerow(
                         [
@@ -224,9 +226,7 @@ class PlaylistFormatter:
                         ]
                     )
             else:
-                csv_writer.writerow(
-                    ["Artist", "", "Song", "Time", "Playtime", "Start time"]
-                )
+                csv_writer.writerow(["Artist", "", "Song", "Time", "Playtime", "Start time"])
                 for row in self.playlist:
                     csv_writer.writerow(
                         [
@@ -244,8 +244,11 @@ class PlaylistFormatter:
             raise RuntimeError("No playlist. Read a playlist first!")
 
         total_tracks = len(self.playlist)
-        print(f"Printing playlist: {self.playlist_name if self.playlist_name else self.filename} ({get_color(self.playlist_type.name, Color.cyan)})")
-        print(f"Total tracks: {total_tracks}")
+        print(
+            f"Printing playlist: {self.playlist_name if self.playlist_name else self.filename} "
+            f"({get_color(self.playlist_type.name, Color.cyan)})\n"
+            f"Total tracks: {total_tracks}"
+        )
 
         width_artist = max(len(row["artist"]) for row in self.playlist)
         width_title = max(len(row["song"]) for row in self.playlist)
@@ -300,10 +303,10 @@ class PlaylistFormatter:
 
         print_color("".join(["-"] * len(heading)))
 
-    def format_playlist(self):
+    def format_playlist(self) -> str:
         """
         Return formatted playlist for printing.
-            Returns (str): list of formatted song strings
+        Returns a list of formatted song strings.
         """
         playlist = []
         if not self.playlist:

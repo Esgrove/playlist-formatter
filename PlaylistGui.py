@@ -3,33 +3,30 @@ import platform
 import sys
 
 from PyQt5.Qt import PYQT_VERSION_STR, QSizePolicy
-from PyQt5.QtCore import Qt, QT_VERSION_STR
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import QT_VERSION_STR, Qt
+from PyQt5.QtGui import QColor, QFont, QPalette
 from PyQt5.QtWidgets import (
-    QWidget,
-    QFileDialog,
-    QStyle,
-    QTreeWidgetItem,
-    QHeaderView,
-    QMainWindow,
     QAbstractItemView,
-    QGridLayout,
     QAction,
-    QMessageBox,
+    QApplication,
     QDesktopWidget,
-    QPushButton,
+    QFileDialog,
     QFontDialog,
-    QLineEdit,
+    QGridLayout,
+    QHeaderView,
     QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QStyle,
     QTreeWidget,
+    QTreeWidgetItem,
+    QWidget,
 )
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QPalette
-from PyQt5.QtWidgets import QApplication
-
+from colorprint import Color, print_color
 from PlaylistFormatter import PlaylistFormatter
-from colorprint import print_color, Color
 
 
 class PlaylistGui(QMainWindow):
@@ -86,17 +83,13 @@ class PlaylistGui(QMainWindow):
         self.statusbar = self.statusBar()
 
         # menu actions
-        self.exit_act = QAction(
-            self.style().standardIcon(QStyle.SP_MessageBoxCritical), "&Exit", self
-        )
+        self.exit_act = QAction(self.style().standardIcon(QStyle.SP_MessageBoxCritical), "&Exit", self)
         self.exit_act.setShortcut("Escape")
         self.exit_act.setStatusTip("Exit application")
         self.exit_act.triggered.connect(self.closeEvent)
         self.file_menu.addAction(self.exit_act)
 
-        self.about_act = QAction(
-            self.style().standardIcon(QStyle.SP_MessageBoxQuestion), "&About", self
-        )
+        self.about_act = QAction(self.style().standardIcon(QStyle.SP_MessageBoxQuestion), "&About", self)
         self.about_act.setShortcut("Ctrl+I")
         self.about_act.setStatusTip("About this application")
         self.about_act.triggered.connect(self.about_event)
@@ -115,16 +108,12 @@ class PlaylistGui(QMainWindow):
         self.export_button = QPushButton("Save playlist", self)
         self.export_button.setToolTip("Export playlist to file")
         self.export_button.clicked.connect(self.export_playlist)
-        self.export_button.setStyleSheet(
-            "QPushButton { font: bold 16px; height: 50px; }"
-        )
+        self.export_button.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
 
         self.basso_button = QPushButton("Upload to Basso", self)
         self.basso_button.setToolTip("Fill playlist to dj.Basso.fi")
         self.basso_button.clicked.connect(self.fill_basso)
-        self.basso_button.setStyleSheet(
-            "QPushButton { font: bold 16px; height: 50px; }"
-        )
+        self.basso_button.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
 
         # line edits
         self.playlist_name_label = QLabel("Playlist Name")

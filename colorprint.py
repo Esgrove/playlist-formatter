@@ -1,7 +1,7 @@
 """
 Color print helper
 Akseli Lukkarila
-2019
+2019-2023
 """
 import sys
 
@@ -82,4 +82,3 @@ def print_magenta(text: str, bold=False, **kwargs):
 
 def print_cyan(text: str, bold=False, **kwargs):
     print_color(text, Color.cyan, bold, **kwargs)
-
