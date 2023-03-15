@@ -1,7 +1,7 @@
 # Playlist Tool
 
 Python app for auto-formatting DJ playlists for my own and fellow Bassoradio djs use.
-PyQt5 GUI and command line interfaces.
+PyQt6 GUI and command line interfaces.
 
 Used to process a raw playlist file:
 text is formatted and title cased properly and play times are calculated from timestamps,

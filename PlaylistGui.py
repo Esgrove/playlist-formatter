@@ -2,14 +2,11 @@ import os
 import platform
 import sys
 
-from PyQt5.Qt import PYQT_VERSION_STR, QSizePolicy
-from PyQt5.QtCore import QT_VERSION_STR, Qt
-from PyQt5.QtGui import QColor, QFont, QPalette
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import PYQT_VERSION_STR, QT_VERSION_STR, Qt
+from PyQt6.QtGui import QAction, QColor, QFont, QGuiApplication, QPalette
+from PyQt6.QtWidgets import (
     QAbstractItemView,
-    QAction,
     QApplication,
-    QDesktopWidget,
     QFileDialog,
     QFontDialog,
     QGridLayout,
@@ -19,6 +16,7 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QStyle,
     QTreeWidget,
     QTreeWidgetItem,
@@ -65,14 +63,14 @@ class PlaylistGui(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("Esgrove's Playlist Tool")
-        self.setWindowIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.setWindowIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
         self.setAcceptDrops(True)
 
         # geometry
         self.setGeometry(0, 0, 1000, 800)
         self.setMinimumSize(500, 500)
         qt_rectangle = self.frameGeometry()
-        qt_rectangle.moveCenter(QDesktopWidget().availableGeometry().center())
+        qt_rectangle.moveCenter(QGuiApplication.primaryScreen().availableGeometry().center())
         self.move(qt_rectangle.topLeft())
 
         # menubar
@@ -83,13 +81,13 @@ class PlaylistGui(QMainWindow):
         self.statusbar = self.statusBar()
 
         # menu actions
-        self.exit_act = QAction(self.style().standardIcon(QStyle.SP_MessageBoxCritical), "&Exit", self)
+        self.exit_act = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxCritical), "&Exit", self)
         self.exit_act.setShortcut("Escape")
         self.exit_act.setStatusTip("Exit application")
         self.exit_act.triggered.connect(self.closeEvent)
         self.file_menu.addAction(self.exit_act)
 
-        self.about_act = QAction(self.style().standardIcon(QStyle.SP_MessageBoxQuestion), "&About", self)
+        self.about_act = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxQuestion), "&About", self)
         self.about_act.setShortcut("Ctrl+I")
         self.about_act.setStatusTip("About this application")
         self.about_act.triggered.connect(self.about_event)
@@ -130,15 +128,15 @@ class PlaylistGui(QMainWindow):
         self.list.setStyleSheet("QTreeView::item { margin: 2px; }")
         self.list.setAlternatingRowColors(True)
         self.list.setAcceptDrops(True)
-        self.list.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-        self.list.setDragDropMode(QAbstractItemView.InternalMove)
+        self.list.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self.list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.list.setDropIndicatorShown(True)
-        self.list.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.list.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.list.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.list.setColumnCount(4)
         self.list.setHeaderLabels(("index", "artist", "song", "playtime"))
         self.list.header().setStretchLastSection(False)
-        self.list.header().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.list.header().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.list.setColumnWidth(0, 50)
         self.list.setColumnWidth(1, 500)
         self.list.setColumnWidth(3, 100)
@@ -146,15 +144,15 @@ class PlaylistGui(QMainWindow):
         # grid
         self.main_grid = QGridLayout()
         self.main_grid.setSpacing(10)
-        self.main_grid.addWidget(self.open_button, 0, 0, 1, 2, Qt.AlignTop)
-        self.main_grid.addWidget(self.export_button, 0, 2, 1, 2, Qt.AlignTop)
-        self.main_grid.addWidget(self.basso_button, 0, 4, 1, 2, Qt.AlignTop)
-        self.main_grid.addWidget(self.playlist_file_label, 1, 0, 1, 1, Qt.AlignRight)
-        self.main_grid.addWidget(self.playlist_file_edit, 1, 1, 1, 5, Qt.AlignTop)
-        self.main_grid.addWidget(self.playlist_name_label, 2, 0, 1, 1, Qt.AlignRight)
-        self.main_grid.addWidget(self.playlist_name_edit, 2, 1, 1, 2, Qt.AlignTop)
-        self.main_grid.addWidget(self.playlist_date_label, 2, 3, 1, 1, Qt.AlignRight)
-        self.main_grid.addWidget(self.playlist_date_edit, 2, 4, 1, 2, Qt.AlignTop)
+        self.main_grid.addWidget(self.open_button, 0, 0, 1, 2, Qt.AlignmentFlag.AlignTop)
+        self.main_grid.addWidget(self.export_button, 0, 2, 1, 2, Qt.AlignmentFlag.AlignTop)
+        self.main_grid.addWidget(self.basso_button, 0, 4, 1, 2, Qt.AlignmentFlag.AlignTop)
+        self.main_grid.addWidget(self.playlist_file_label, 1, 0, 1, 1, Qt.AlignmentFlag.AlignRight)
+        self.main_grid.addWidget(self.playlist_file_edit, 1, 1, 1, 5, Qt.AlignmentFlag.AlignTop)
+        self.main_grid.addWidget(self.playlist_name_label, 2, 0, 1, 1, Qt.AlignmentFlag.AlignRight)
+        self.main_grid.addWidget(self.playlist_name_edit, 2, 1, 1, 2, Qt.AlignmentFlag.AlignTop)
+        self.main_grid.addWidget(self.playlist_date_label, 2, 3, 1, 1, Qt.AlignmentFlag.AlignRight)
+        self.main_grid.addWidget(self.playlist_date_edit, 2, 4, 1, 2, Qt.AlignmentFlag.AlignTop)
         self.main_grid.addWidget(self.list, 3, 0, 1, 6)
 
         # main widget
@@ -235,7 +233,7 @@ class PlaylistGui(QMainWindow):
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
-            event.setDropAction(Qt.CopyAction)
+            event.setDropAction(Qt.DropAction.CopyAction)
             event.accept()
         else:
             event.ignore()
@@ -245,28 +243,28 @@ class PlaylistGui(QMainWindow):
         self.add_playlist(filename)
 
     def closeEvent(self, event):
-        self.quit()
+        sys.exit()
 
 
-def RunGui():
+def run_gui():
     # open GUI
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
 
-    # colors
+    # custom colors
     palette = QPalette()
-    palette.setColor(QPalette.Window, QColor(205, 0, 0))
-    palette.setColor(QPalette.WindowText, Qt.white)
-    palette.setColor(QPalette.Base, QColor(15, 15, 15))
-    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ToolTipBase, Qt.white)
-    palette.setColor(QPalette.ToolTipText, Qt.white)
-    palette.setColor(QPalette.Text, Qt.white)
-    palette.setColor(QPalette.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ButtonText, Qt.white)
-    palette.setColor(QPalette.BrightText, Qt.red)
-    palette.setColor(QPalette.Highlight, QColor(205, 205, 205).lighter())
-    palette.setColor(QPalette.HighlightedText, Qt.black)
+    palette.setColor(QPalette.ColorRole.Window, QColor(205, 0, 0))
+    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Base, QColor(15, 15, 15))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(205, 205, 205).lighter())
+    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
     app.setPalette(palette)
 
     # run tool
@@ -274,4 +272,4 @@ def RunGui():
     tool.show()
 
     # wait for exit
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

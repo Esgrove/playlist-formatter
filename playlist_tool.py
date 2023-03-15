@@ -1,7 +1,7 @@
 import sys
 
 from PlaylistFormatter import PlaylistFormatter
-from PlaylistGui import RunGui
+from PlaylistGui import run_gui
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -15,4 +15,4 @@ if __name__ == "__main__":
         formatter.print_playlist()
         formatter.export_csv(outfile)
     else:
-        RunGui()
+        run_gui()
