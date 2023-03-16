@@ -106,3 +106,8 @@ venv.bak/
 .idea
 .vscode
 *.csv
+
+
+# Added by cargo
+
+/target
