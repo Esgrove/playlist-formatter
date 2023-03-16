@@ -1,4 +1,7 @@
-use clap::{Parser};
+use std::path::Path;
+
+use anyhow::Result;
+use clap::Parser;
 
 /// Command line arguments
 ///
@@ -10,6 +13,7 @@ use clap::{Parser};
     author,
     version,
     about,
+    long_about = "DJ playlist formatting utility. Reads raw playlist files and creates a nicely formatted version.",
     arg_required_else_help = true
 )]
 struct Args {
@@ -21,7 +25,17 @@ struct Args {
     file: String,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let args = Args::parse();
-    println!("file: {:?}", args.file);
+    let filepath = Path::new(&args.file);
+    if !filepath.is_file() {
+        anyhow::bail!(
+            "file does not exist or is not accessible: '{}'",
+            filepath.display()
+        );
+    }
+
+    println!("File: {}", filepath.display());
+
+    Ok(())
 }
