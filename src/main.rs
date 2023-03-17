@@ -1,4 +1,6 @@
-use std::path::Path;
+mod formatter;
+
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use clap::Parser;
@@ -27,7 +29,7 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    let filepath = Path::new(&args.file);
+    let filepath = PathBuf::from(&args.file);
     if !filepath.is_file() {
         anyhow::bail!(
             "file does not exist or is not accessible: '{}'",
@@ -36,6 +38,8 @@ fn main() -> Result<()> {
     }
 
     println!("File: {}", filepath.display());
+
+    let mut formatter = formatter::Playlist::new(filepath);
 
     Ok(())
 }
