@@ -16,6 +16,7 @@ clap = { version = "4.1.8", features = ["derive"] }
 colored = "2.0.0"
 csv = "1.2.1"
 log = "0.4.17"
+titlecase = "2.2.1"
 
 [[bin]]
 name = "playlist_tool"
