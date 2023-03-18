@@ -29,7 +29,7 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    let filepath = PathBuf::from(&args.file);
+    let filepath = Path::new(&args.file);
     if !filepath.is_file() {
         anyhow::bail!(
             "file does not exist or is not accessible: '{}'",
@@ -39,7 +39,9 @@ fn main() -> Result<()> {
 
     println!("File: {}", filepath.display());
 
-    let mut formatter = formatter::Playlist::new(filepath);
+    let formatter = formatter::Playlist::new(filepath);
+
+    println!("{:#?}", formatter);
 
     Ok(())
 }
