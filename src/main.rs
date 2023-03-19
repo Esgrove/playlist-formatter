@@ -45,8 +45,7 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-
-    let level_filter = match args.log {
+    let log_level_filter = match args.log {
         None => LevelFilter::Info,
         Some(level) => match level {
             Level::Debug => LevelFilter::Debug,
@@ -67,10 +66,10 @@ fn main() -> Result<()> {
                 record.args()
             )
         })
-        .filter(None, level_filter)
+        .filter(None, log_level_filter)
         .init();
 
-    log::debug!("Using log level: {:?}", level_filter);
+    log::debug!("Using log level: {:?}", log_level_filter);
 
     let filepath = Path::new(&args.file);
     if !filepath.is_file() {

@@ -1,25 +1,34 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
 use chrono::{Duration, NaiveDateTime, NaiveTime};
+use clap::builder::Str;
 use csv::Reader;
+use encoding_rs_io::DecodeReaderBytes;
 use std::collections::{BTreeMap, HashMap};
-use std::fmt;
+use std::fs::File;
+use std::io::Read;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
+use std::{fmt, fs};
 
+/// Which DJ software is the playlist from.
+/// Each software has their own formatting style.
 #[derive(Debug, PartialEq)]
 enum PlaylistType {
     Rekordbox,
     Serato,
 }
 
+/// Playlist file type
 #[derive(Debug, PartialEq)]
 enum PlaylistFormat {
     Txt,
     Csv,
 }
 
+/// Represents one played track
 #[derive(Debug)]
 struct Track {
     artist: String,
@@ -28,6 +37,7 @@ struct Track {
     play_time: Option<Duration>,
 }
 
+/// Parsed playlist data
 #[derive(Debug)]
 pub(crate) struct Playlist {
     date: NaiveDateTime,
@@ -39,6 +49,7 @@ pub(crate) struct Playlist {
 }
 
 impl Playlist {
+    /// Initialize playlist from given filepath
     pub fn new(file: &Path) -> Playlist {
         let format = Self::playlist_format(file);
         match format {
@@ -47,17 +58,80 @@ impl Playlist {
         }
     }
 
-    fn read_txt(file: &Path) -> Result<Playlist> {
+    /// Read a .txt playlist file
+    fn read_txt(path: &Path) -> Result<Playlist> {
+        let file = File::open(path)?;
+        // Rekordbox encodes txt files in UTF-16 :(
+        // This implementation is far from ideal since it reads everything into a single string
+        let mut decoder = DecodeReaderBytes::new(file);
+        let mut dest = String::new();
+        decoder.read_to_string(&mut dest)?;
+
+        let lines: Vec<Vec<String>> = dest
+            .lines()
+            .map(|s| s.split("\t").map(|l| l.trim().to_string()).collect())
+            .collect();
+
+        log::debug!("Lines ({}):", lines.len());
+        log::debug!("{:#?}", lines);
+
+        // map each header name to the row index they correspond to in the data, for example:
+        // {"name": 0, "artist": 1, "start time": 2}
+        let map: HashMap<String, usize> = {
+            let headers = &lines[0];
+            headers
+                .iter()
+                .enumerate()
+                .map(|(index, value)| (value.to_string(), index))
+                .collect()
+        };
+
+        log::debug!("txt headers ({}): {:?}", map.keys().len(), map.keys());
+
+        let data: Vec<BTreeMap<String, String>> = {
+            lines[1..]
+                .iter()
+                .map(|line| {
+                    let mut items: BTreeMap<String, String> = BTreeMap::new();
+                    for (name, index) in &map {
+                        let value = &line[*index];
+                        items.insert(name.to_string(), value.to_string());
+                    }
+                    items
+                })
+                .collect()
+        };
+
+        log::debug!("Rows ({}):", data.len());
+        for row in &data {
+            log::debug!("{:#?}", row);
+        }
+
+        let tracks: Vec<Track> = {
+            data
+                .iter()
+                .map(|row| {
+                    Track {
+                        title: row.get("Track Title").unwrap().to_string(),
+                        artist: row.get("Artist").unwrap().to_string(),
+                        start_time: None,
+                        play_time: None,
+                    }
+                })
+                .collect()
+        };
+
         Ok(Playlist {
-            date: Default::default(),
-            file: PathBuf::from(file),
+            date: NaiveDateTime::default(),
+            file: PathBuf::from(path),
             format: PlaylistFormat::Txt,
-            name: file.file_name().unwrap().to_str().unwrap().to_string(),
+            name: path.file_name().unwrap().to_str().unwrap().to_string(),
             playlist_type: PlaylistType::Rekordbox,
-            tracks: vec![],
+            tracks,
         })
     }
 
+    /// Read a .csv playlist file
     fn read_csv(file: &Path) -> Result<Playlist> {
         let mut reader = Reader::from_path(file)
             .with_context(|| format!("Failed to open CSV file: '{}'", file.display()))?;
@@ -145,12 +219,14 @@ impl Playlist {
         })
     }
 
+    /// Get playlist format enum from file extension
     fn playlist_format(file: &Path) -> PlaylistFormat {
         let extension = file.extension().unwrap().to_str().unwrap();
         PlaylistFormat::from_str(extension).unwrap()
     }
 }
 
+/// Convert string to enum
 impl FromStr for PlaylistFormat {
     type Err = anyhow::Error;
     fn from_str(input: &str) -> Result<PlaylistFormat> {
