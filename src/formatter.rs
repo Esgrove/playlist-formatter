@@ -1,17 +1,16 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
 use chrono::{Duration, NaiveDateTime, NaiveTime};
-use clap::builder::Str;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use std::collections::{BTreeMap, HashMap};
+use std::fmt;
 use std::fs::File;
+use std::io::BufRead;
 use std::io::Read;
-use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
-use std::{fmt, fs};
 
 /// Which DJ software is the playlist from.
 /// Each software has their own formatting style.
@@ -69,7 +68,7 @@ impl Playlist {
 
         let lines: Vec<Vec<String>> = dest
             .lines()
-            .map(|s| s.split("\t").map(|l| l.trim().to_string()).collect())
+            .map(|s| s.split('\t').map(|l| l.trim().to_string()).collect())
             .collect();
 
         log::debug!("Lines ({}):", lines.len());
@@ -108,15 +107,12 @@ impl Playlist {
         }
 
         let tracks: Vec<Track> = {
-            data
-                .iter()
-                .map(|row| {
-                    Track {
-                        title: row.get("Track Title").unwrap().to_string(),
-                        artist: row.get("Artist").unwrap().to_string(),
-                        start_time: None,
-                        play_time: None,
-                    }
+            data.iter()
+                .map(|row| Track {
+                    title: row.get("Track Title").unwrap().to_string(),
+                    artist: row.get("Artist").unwrap().to_string(),
+                    start_time: None,
+                    play_time: None,
                 })
                 .collect()
         };
