@@ -128,9 +128,9 @@ impl Playlist {
     }
 
     /// Read a .csv playlist file
-    fn read_csv(file: &Path) -> Result<Playlist> {
-        let mut reader = Reader::from_path(file)
-            .with_context(|| format!("Failed to open CSV file: '{}'", file.display()))?;
+    fn read_csv(path: &Path) -> Result<Playlist> {
+        let mut reader = Reader::from_path(path)
+            .with_context(|| format!("Failed to open CSV file: '{}'", path.display()))?;
 
         // map each header name to the row index they correspond to in the data, for example:
         // {"name": 0, "artist": 1, "start time": 2}
@@ -207,7 +207,7 @@ impl Playlist {
 
         Ok(Playlist {
             date: playlist_time,
-            file: PathBuf::from(file),
+            file: PathBuf::from(path),
             format: PlaylistFormat::Csv,
             name: playlist_name.clone(),
             playlist_type: PlaylistType::Serato,
