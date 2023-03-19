@@ -126,7 +126,7 @@ class PlaylistGui(QMainWindow):
 
         # list view
         self.list = QTreeWidget()
-        self.list.setFont(QFont("Consolas", 9))
+        self.list.setFont(QFont("Consolas", 9) if self.platform.is_windows() else QFont("Menlo", 9))
         self.list.setStyleSheet("QTreeView::item { margin: 2px; }")
         self.list.setAlternatingRowColors(True)
         self.list.setAcceptDrops(True)
@@ -140,7 +140,7 @@ class PlaylistGui(QMainWindow):
         self.list.header().setStretchLastSection(False)
         self.list.header().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.list.setColumnWidth(0, 50)
-        self.list.setColumnWidth(1, 500)
+        self.list.setColumnWidth(1, 300)
         self.list.setColumnWidth(3, 100)
 
         # grid
@@ -171,18 +171,14 @@ class PlaylistGui(QMainWindow):
         )
 
     def add_playlist(self, filename):
+        """Read playlist data and add to tree widget."""
         self.formatter.read_playlist(filename)
         for index, row in enumerate(self.formatter.playlist):
-            self.list.addTopLevelItem(
-                QTreeWidgetItem(
-                    (
-                        str(index + 1),
-                        row["artist"],
-                        row["song"],
-                        str(row["playtime"]).split(", ")[-1],
-                    )
-                )
+            item = QTreeWidgetItem(
+                (str(index + 1), row.get("artist"), row.get("song"), str(row.get("playtime", "")).split(", ")[-1])
             )
+            item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsEnabled)
+            self.list.addTopLevelItem(item)
 
         self.playlist_file_edit.setText(str(self.formatter.playlist_file))
         self.playlist_name_edit.setText(str(self.formatter.playlist_name))
