@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
-use chrono::{Duration, NaiveDateTime};
+use chrono::{Duration, NaiveDateTime, NaiveTime, ParseResult};
 use csv::Reader;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -22,8 +22,8 @@ enum PlaylistFormat {
 
 #[derive(Debug)]
 struct Track {
-    title: String,
     artist: String,
+    title: String,
     start_time: Option<NaiveDateTime>,
     play_time: Option<Duration>,
 }
@@ -73,7 +73,7 @@ impl Playlist {
                 .collect()
         };
 
-        println!("CSV headers ({}): {:?}", map.keys().len(), map.keys());
+        log::debug!("CSV headers ({}): {:?}", map.keys().len(), map.keys());
 
         let required_fields = vec!["name", "artist"];
         for field in required_fields {
@@ -97,19 +97,43 @@ impl Playlist {
                 .collect()
         };
 
-        println!("Rows ({}):", data.len());
+        log::debug!("Rows ({}):", data.len());
         for row in &data {
-            println!("{:?}", row);
+            log::debug!("{:?}", row);
         }
 
-        // info row
+        // first row in Serato CSV is an info row with the playlist name and timestamp
         let playlist_name = &data[0].get("name").unwrap().to_string();
-        // "10.01.2019, 20.00.00 EET"
+        // timestamp, for example "10.01.2019, 20.00.00 EET"
         let playlist_time = NaiveDateTime::parse_from_str(
             data[0].get("start time").unwrap(),
             "%d.%m.%Y, %H.%M.%S %Z",
         )
         .unwrap();
+
+        // parse tracks
+        let tracks: Vec<Track> = {
+            data[1..]
+                .iter()
+                .map(|row| {
+                    let start_time: Option<NaiveDateTime> = {
+                        match row.get("start time") {
+                            None => None,
+                            Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
+                                Ok(n) => Some(NaiveDateTime::new(playlist_time.date(), n)),
+                                Err(_) => None,
+                            },
+                        }
+                    };
+                    Track {
+                        title: row.get("name").unwrap().to_string(),
+                        artist: row.get("artist").unwrap().to_string(),
+                        start_time,
+                        play_time: None,
+                    }
+                })
+                .collect()
+        };
 
         Ok(Playlist {
             date: playlist_time,
@@ -117,7 +141,7 @@ impl Playlist {
             format: PlaylistFormat::Csv,
             name: playlist_name.clone(),
             playlist_type: PlaylistType::Serato,
-            tracks: vec![],
+            tracks,
         })
     }
 

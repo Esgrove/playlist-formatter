@@ -1,9 +1,21 @@
 mod formatter;
 
+use std::io::Write;
 use std::path::Path;
 
 use anyhow::Result;
+use chrono::Local;
 use clap::Parser;
+use env_logger::Builder;
+use log::LevelFilter;
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum Level {
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
 
 /// Command line arguments
 ///
@@ -23,12 +35,43 @@ struct Args {
     #[arg(short, long, help = "Overwrite an existing file")]
     overwrite: bool,
 
+    /// Log level
+    #[arg(value_enum, short, long, help = "Log level", value_name = "LEVEL")]
+    log: Option<Level>,
+
     /// Playlist file to process (required)
     file: String,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
+
+    let level_filter = match args.log {
+        None => LevelFilter::Info,
+        Some(level) => match level {
+            Level::Debug => LevelFilter::Debug,
+            Level::Info => LevelFilter::Info,
+            Level::Warn => LevelFilter::Warn,
+            Level::Error => LevelFilter::Error,
+        },
+    };
+
+    // init logger with timestamps
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}]: {}",
+                Local::now().format("%Y-%m-%d %H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .filter(None, level_filter)
+        .init();
+
+    log::debug!("Using log level: {:?}", level_filter);
+
     let filepath = Path::new(&args.file);
     if !filepath.is_file() {
         anyhow::bail!(
@@ -37,11 +80,11 @@ fn main() -> Result<()> {
         );
     }
 
-    println!("File: {}", filepath.display());
+    log::debug!("Playlist file: {}", filepath.display());
 
     let formatter = formatter::Playlist::new(filepath);
 
-    println!("{:#?}", formatter);
+    log::info!("{:#?}", formatter);
 
     Ok(())
 }
