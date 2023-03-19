@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
-use chrono::{Duration, NaiveDateTime, NaiveTime, ParseResult};
+use chrono::{Duration, NaiveDateTime, NaiveTime};
 use csv::Reader;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
