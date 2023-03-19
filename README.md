@@ -25,7 +25,9 @@ Implemented in a somewhat hacky way with _Selenium_, as I could not get it worki
 
 ## Looks like
 
-![alt text](https://github.com/Esgrove/playlistTool/blob/master/playlistformatter.png)
+![alt text](https://github.com/Esgrove/playlistTool/blob/master/playlist_gui.png)
+
+![alt text](https://github.com/Esgrove/playlistTool/blob/master/playlist_cli.png)
 
 ## Rust version
 
