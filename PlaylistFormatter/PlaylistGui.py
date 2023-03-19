@@ -6,6 +6,7 @@ Akseli Lukkarila
 import os
 import sys
 
+import darkdetect
 from PyQt6.QtCore import PYQT_VERSION_STR, QT_VERSION_STR, Qt
 from PyQt6.QtGui import QAction, QColor, QFont, QGuiApplication, QPalette
 from PyQt6.QtWidgets import (
@@ -262,18 +263,20 @@ def run_gui():
     # Window: A general background color.
     # WindowText: A general foreground color.
     palette = QPalette()
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#1E1E1E").lighter())
-    palette.setColor(QPalette.ColorRole.Base, QColor("#1E1E1E").darker())
-    palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-    palette.setColor(QPalette.ColorRole.Button, QColor("#1E1E1E").lighter())
-    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Highlight, QColor("#CACACA"))
-    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.darkRed)
-    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#CACACA"))
-    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Window, QColor("#1E1E1E"))
-    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+    if darkdetect.isDark():
+        # custom dark theme since Qt lacks one
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#1E1E1E").lighter())
+        palette.setColor(QPalette.ColorRole.Base, QColor("#1E1E1E").darker())
+        palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+        palette.setColor(QPalette.ColorRole.Button, QColor("#1E1E1E").lighter())
+        palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Highlight, QColor("#CACACA"))
+        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.darkRed)
+        palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#CACACA"))
+        palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Window, QColor("#1E1E1E"))
+        palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
     app.setPalette(palette)
 
     # run tool
