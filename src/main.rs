@@ -1,6 +1,6 @@
 mod formatter;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::Result;
 use clap::Parser;

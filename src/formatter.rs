@@ -1,14 +1,12 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, NaiveDateTime};
 use csv::Reader;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
-use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
-use titlecase::titlecase;
 
 #[derive(Debug, PartialEq)]
 enum PlaylistType {
@@ -26,13 +24,13 @@ enum PlaylistFormat {
 struct Track {
     title: String,
     artist: String,
-    start_time: Option<DateTime<Utc>>,
+    start_time: Option<NaiveDateTime>,
     play_time: Option<Duration>,
 }
 
 #[derive(Debug)]
 pub(crate) struct Playlist {
-    date: DateTime<Utc>,
+    date: NaiveDateTime,
     file: PathBuf,
     format: PlaylistFormat,
     name: String,
@@ -66,12 +64,12 @@ impl Playlist {
 
         // map each header name to the row index they correspond to in the data, for example:
         // {"name": 0, "artist": 1, "start time": 2}
-        let map: HashMap<&str, usize> = {
+        let map: HashMap<String, usize> = {
             let headers = reader.headers()?;
             headers
                 .iter()
                 .enumerate()
-                .map(|(index, value)| (value, index))
+                .map(|(index, value)| (value.to_string(), index))
                 .collect()
         };
 
@@ -84,28 +82,40 @@ impl Playlist {
             }
         }
 
-        let data: Vec<HashMap<&str, &str>> = reader
-            .records()
-            .into_iter()
-            .map(|s| {
-                let record = s.unwrap();
-                let mut items: HashMap<&str, &str> = HashMap::new();
-                for (name, index) in map {
-                    items.insert(name, &record[index])
-                }
-                items
-            })
-            .collect();
+        let data: Vec<BTreeMap<String, String>> = {
+            reader
+                .records()
+                .map(|s| {
+                    let record = s.unwrap();
+                    let mut items: BTreeMap<String, String> = BTreeMap::new();
+                    for (name, index) in &map {
+                        let value = &record[*index];
+                        items.insert(name.to_string(), value.to_string());
+                    }
+                    items
+                })
+                .collect()
+        };
 
-        for row in data {
+        println!("Rows ({}):", data.len());
+        for row in &data {
             println!("{:?}", row);
         }
 
+        // info row
+        let playlist_name = &data[0].get("name").unwrap().to_string();
+        // "10.01.2019, 20.00.00 EET"
+        let playlist_time = NaiveDateTime::parse_from_str(
+            data[0].get("start time").unwrap(),
+            "%d.%m.%Y, %H.%M.%S %Z",
+        )
+        .unwrap();
+
         Ok(Playlist {
-            date: Default::default(),
+            date: playlist_time,
             file: PathBuf::from(file),
             format: PlaylistFormat::Csv,
-            name: file.file_name().unwrap().to_str().unwrap().to_string(),
+            name: playlist_name.clone(),
             playlist_type: PlaylistType::Serato,
             tracks: vec![],
         })
