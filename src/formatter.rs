@@ -229,6 +229,14 @@ impl Playlist {
         })
     }
 
+    fn format_playlist(&self) {
+        todo!();
+    }
+
+    fn print_playlist(&self) {
+        todo!();
+    }
+
     /// Get playlist format enum from file extension
     fn playlist_format(file: &Path) -> PlaylistFormat {
         let extension = file.extension().unwrap().to_str().unwrap();
@@ -240,7 +248,7 @@ impl Playlist {
 impl FromStr for PlaylistFormat {
     type Err = anyhow::Error;
     fn from_str(input: &str) -> Result<PlaylistFormat> {
-        match input {
+        match input.to_lowercase().as_str() {
             "csv" => Ok(PlaylistFormat::Csv),
             "txt" => Ok(PlaylistFormat::Txt),
             _ => Err(anyhow!("Unsupported file format: '{input}'")),
@@ -256,6 +264,15 @@ impl fmt::Display for PlaylistType {
 
 impl fmt::Display for PlaylistFormat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{}", match self {
+            PlaylistFormat::Txt => "txt",
+            PlaylistFormat::Csv => "csv",
+        })
+    }
+}
+
+impl fmt::Display for Track {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} - {}", self.artist, self.title)
     }
 }
