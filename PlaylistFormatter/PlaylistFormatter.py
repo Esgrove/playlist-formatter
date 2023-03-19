@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Self
 
 import chardet
 import colorama
@@ -23,6 +23,21 @@ class PlaylistType(Enum):
     REKORDBOX = auto()
 
 
+class PlaylistFormat(Enum):
+    CSV = auto()
+    TXT = auto()
+
+    @staticmethod
+    def from_str(label: str) -> Self:
+        match label.lower():
+            case ("txt", ".txt"):
+                return PlaylistFormat.CSV
+            case ("csv", ".csv"):
+                return PlaylistFormat.TXT
+
+        raise RuntimeError(f"Unsupported playlist format: '{label}'")
+
+
 class Track:
     def __init__(
         self,
@@ -32,6 +47,7 @@ class Track:
         start_time: datetime = None,
         play_time: datetime = None,
     ):
+        # join is used here to remove extra whitespace
         self.artist = " ".join(artist.strip().split())
         self.title = " ".join(title.strip().split())
         self.time = relative_time
@@ -40,34 +56,39 @@ class Track:
 
 
 class PlaylistFormatter:
-    """Reads a playlist text file and creates correctly formatted csv or excel."""
+    """Reads a playlist file and creates a nicely formatted version."""
 
-    def __init__(self):
-        self.filename = ""
-        self.filepath = ""
-        self.filetype = ""
+    def __init__(self, filepath: str = None):
+        self.filename: str = ""
+        self.filepath: str = ""
+        self.filetype: str = ""
         self.playlist: list[Track] = []
-        self.playlist_date = None
+        self.playlist_date: datetime = None
         self.playlist_file = None
-        self.playlist_name = ""
-        self.playlist_type: Optional[PlaylistType] = None
+        self.playlist_name: str = ""
+        self.playlist_type: PlaylistType | None = None
+        self.playlist_format: PlaylistFormat = None
 
-    def read_playlist(self, filename: str):
-        if not os.path.isfile(filename):
-            raise RuntimeError("File does not exist.")
+        if filepath:
+            self.read_playlist(filepath)
 
-        print(f"Reading playlist: {get_color(filename, Color.yellow)}")
-        self.filepath, self.filename = os.path.split(filename)
+    def read_playlist(self, filepath: str):
+        """Read a playlist file from the given file path."""
+        if not os.path.isfile(filepath):
+            raise RuntimeError(f"File does not exist: '{filepath}'")
+
+        print(f"Reading playlist: {get_color(filepath, Color.yellow)}")
+        self.filepath, self.filename = os.path.split(filepath)
         self.filename, self.filetype = os.path.splitext(self.filename)
         self.filetype = self.filetype.strip().lower()
         if self.filetype == ".csv":
-            self._read_csv(filename)
+            self._read_csv(filepath)
         elif self.filetype == ".txt":
-            self._read_txt(filename)
+            self._read_txt(filepath)
         elif self.filetype in (".xlsx", ".xlsm", ".xltx", ".xltm"):
-            self._read_xls(filename)
+            self._read_xls(filepath)
         else:
-            raise RuntimeError(f"Unsupported filetype '{self.filetype}'!")
+            raise RuntimeError(f"Unsupported file type: '{self.filetype}'")
 
     @staticmethod
     def _format_title(title: str) -> str:
@@ -103,12 +124,13 @@ class PlaylistFormatter:
                 title = title.replace(" - ", " (")
                 title = title + ")"
 
-        # split at all whitespace chars and recombine -> remove extra spaces and linebreaks...
+        # split at all whitespace chars and recombine -> removes extra spaces and linebreaks
         title = " ".join(title.split())
 
         return title
 
-    def _read_csv(self, filename):
+    def _read_csv(self, filename: str):
+        """Read csv playlist."""
         with open(filename) as csv_file:
             playlist_data = csv.DictReader(csv_file)
 
@@ -163,10 +185,12 @@ class PlaylistFormatter:
             self.playlist_type = PlaylistType.SERATO
 
     def _read_xls(self, filename: str):
+        """Read Excel playlist."""
         # TODO
         raise NotImplementedError
 
     def _read_txt(self, filename: str):
+        """Read txt playlist."""
         filepath = Path(filename)
         if not filepath.exists():
             sys.exit(f"File does not exist: {filename}")
@@ -203,8 +227,12 @@ class PlaylistFormatter:
         self.playlist_file = filename
 
     def export_csv(self, filename=None):
+        """
+        Export playlist data to a csv file.
+        If a filename is not provided, will default to the filename of the imported playlist.
+        """
         if not self.playlist:
-            raise RuntimeError("No playlist. Read a playlist first!")
+            raise RuntimeError("No playlist to export. Read a playlist first!")
 
         out_filename = filename if filename else self.filename
         if not out_filename.endswith(".csv"):
@@ -215,33 +243,36 @@ class PlaylistFormatter:
         out_file = os.path.join(self.filepath, out_filename)
         with open(out_file, "w", newline="") as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=",")
-            if self.playlist_type == PlaylistType.REKORDBOX:
-                csv_writer.writerow(["Artist", "", "Song"])
-                for row in self.playlist:
-                    csv_writer.writerow(
-                        [
-                            row["artist"],
-                            "-",
-                            row["song"],
-                        ]
-                    )
-            else:
-                csv_writer.writerow(["Artist", "", "Song", "Time", "Playtime", "Start time"])
-                for row in self.playlist:
-                    csv_writer.writerow(
-                        [
-                            row["artist"],
-                            "-",
-                            row["song"],
-                            str(row["time"]).split(", ")[-1],
-                            str(row["playtime"]).split(", ")[-1],
-                            row["starttime"].strftime("%H:%M:%S"),
-                        ]
-                    )
+            match self.playlist_type:
+                case PlaylistType.REKORDBOX:
+                    csv_writer.writerow(["Artist", "", "Song"])
+                    for row in self.playlist:
+                        csv_writer.writerow(
+                            [
+                                row["artist"],
+                                "-",
+                                row["song"],
+                            ]
+                        )
+                case PlaylistType.SERATO:
+                    csv_writer.writerow(["Artist", "", "Song", "Time", "Playtime", "Start time"])
+                    for row in self.playlist:
+                        csv_writer.writerow(
+                            [
+                                row["artist"],
+                                "-",
+                                row["song"],
+                                str(row["time"]).split(", ")[-1],
+                                str(row["playtime"]).split(", ")[-1],
+                                row["starttime"].strftime("%H:%M:%S"),
+                            ]
+                        )
+                case _:
+                    raise NotImplementedError
 
     def print_playlist(self):
         if not self.playlist:
-            raise RuntimeError("No playlist. Read a playlist first!")
+            raise RuntimeError("No playlist to print. Read a playlist first!")
 
         total_tracks = len(self.playlist)
         print(
@@ -303,14 +334,13 @@ class PlaylistFormatter:
 
         print_color("".join(["-"] * len(heading)))
 
-    def format_playlist(self) -> str:
+    def format_playlist(self) -> list[str]:
         """
-        Return formatted playlist for printing.
-        Returns a list of formatted song strings.
+        Returns a formatted playlist for printing (list of formatted song strings).
         """
         playlist = []
         if not self.playlist:
-            raise RuntimeError("No playlist. Read a playlist first!")
+            raise RuntimeError("No playlist to format. Read a playlist first!")
 
         width_artist = max(len(row["artist"]) for row in self.playlist)
         width_title = max(len(row["song"]) for row in self.playlist)

@@ -10,6 +10,7 @@ from PlaylistFormatter.PlaylistFormatter import PlaylistFormatter
 
 # TODO: proper CLI handling
 def run_cli():
+    """Run playlist formatting for file given as an argument."""
     args = sys.argv[1:]
     filename = args[0]
     outfile = args[1] if len(args) >= 2 else None

@@ -23,7 +23,7 @@ class Color:
 
 
 def get_color(text: str, color=Color.white, bold=False) -> str:
-    """Format string with color using Colorama."""
+    """Format text with color."""
     return f"{colorama.Style.BRIGHT if bold else ''}{color}{text}{colorama.Style.RESET_ALL}"
 
 

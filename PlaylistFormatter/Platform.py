@@ -36,15 +36,15 @@ class Platform(Enum):
     @staticmethod
     def get() -> Self:
         """Initialize Platform enum for current OS."""
-        platform_name = platform.system().lower()
-        if platform_name == "darwin":
-            return Platform.MAC
-        elif platform_name == "windows":
-            return Platform.WINDOWS
-        elif platform_name == "linux":
-            return Platform.LINUX
-
-        raise RuntimeError(f"Unsupported OS: '{platform.system()}'")
+        match platform.system().lower():
+            case "darwin":
+                return Platform.MAC
+            case "windows":
+                return Platform.WINDOWS
+            case "linux":
+                return Platform.LINUX
+            case _:
+                raise RuntimeError(f"Unsupported OS: '{platform.system()}'")
 
     def __str__(self):
         return self.value
