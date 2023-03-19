@@ -65,7 +65,7 @@ class PlaylistGui(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("Esgrove's Playlist Tool")
-        self.setWindowIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+        self.setWindowIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogListView))
         self.setAcceptDrops(True)
 
         # geometry
@@ -96,6 +96,7 @@ class PlaylistGui(QMainWindow):
         self.help_menu.addAction(self.about_act)
 
         self.font_act = QAction("&Choose Font", self)
+        self.font_act.setStatusTip("Choose list font")
         self.font_act.triggered.connect(self.choose_font)
         self.view_menu.addAction(self.font_act)
 
@@ -116,9 +117,9 @@ class PlaylistGui(QMainWindow):
         self.basso_button.setStyleSheet("QPushButton { font: bold 16px; height: 50px; }")
 
         # line edits
-        self.playlist_name_label = QLabel("Playlist Name")
-        self.playlist_date_label = QLabel("Playlist Date")
-        self.playlist_file_label = QLabel("Playlist File")
+        self.playlist_name_label = QLabel("Playlist name:")
+        self.playlist_date_label = QLabel("Playlist date:")
+        self.playlist_file_label = QLabel("Playlist file:")
         self.playlist_name_edit = QLineEdit()
         self.playlist_date_edit = QLineEdit()
         self.playlist_file_edit = QLineEdit()
@@ -166,7 +167,7 @@ class PlaylistGui(QMainWindow):
         QMessageBox.about(
             self,
             "About",
-            "Playlist Tools\nAkseli Lukkarila\n2018\n\n"
+            "Playlist Tools\nAkseli Lukkarila\n2018-2023\n\n"
             + f"Python {sys.version.split(' ')[0]} QT {QT_VERSION_STR} PyQT {PYQT_VERSION_STR}",
         )
 
