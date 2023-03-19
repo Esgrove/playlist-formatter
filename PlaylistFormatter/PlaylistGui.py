@@ -254,19 +254,29 @@ def run_gui():
     app.setStyle("Fusion")
 
     # custom colors
+    # AlternateBase: Used as the alternate background color in views with alternating row colors.
+    # Base: Used mostly as the background color for text entry widgets.
+    # BrightText: A text color that is very different from WindowText, and contrasts well with e.g. Dark.
+    # Button: The general button background color.
+    # ButtonText: A foreground color used with the Button color.
+    # Text: The foreground color used with Base.
+    # ToolTipBase: Used as the background color for QToolTip and QWhatsThis.
+    # ToolTipText: Used as the foreground color for QToolTip and QWhatsThis.
+    # Window: A general background color.
+    # WindowText: A general foreground color.
     palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(205, 0, 0))
-    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Base, QColor(15, 15, 15))
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#1E1E1E").lighter())
+    palette.setColor(QPalette.ColorRole.Base, QColor("#1E1E1E").darker())
     palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(205, 205, 205).lighter())
-    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+    palette.setColor(QPalette.ColorRole.Button, QColor("#1E1E1E").lighter())
+    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Highlight, QColor("#CACACA"))
+    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.darkRed)
+    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#CACACA"))
+    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Window, QColor("#1E1E1E"))
+    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
     app.setPalette(palette)
 
     # run tool
