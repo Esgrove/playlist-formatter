@@ -66,6 +66,7 @@ impl Playlist {
         let mut dest = String::new();
         decoder.read_to_string(&mut dest)?;
 
+        // Split string to lines, and each line to separate items
         let lines: Vec<Vec<String>> = dest
             .lines()
             .map(|s| s.split('\t').map(|l| l.trim().to_string()).collect())
@@ -74,8 +75,9 @@ impl Playlist {
         log::debug!("Lines ({}):", lines.len());
         log::debug!("{:#?}", lines);
 
-        // map each header name to the row index they correspond to in the data, for example:
-        // {"name": 0, "artist": 1, "start time": 2}
+        // Rekordbox txt: first line contains headers.
+        // Map each header name to the column index they correspond to in the data, for example:
+        // {"#": 0, "Artist": 1, "Track Title": 2}
         let map: HashMap<String, usize> = {
             let headers = &lines[0];
             headers
@@ -87,6 +89,14 @@ impl Playlist {
 
         log::debug!("txt headers ({}): {:?}", map.keys().len(), map.keys());
 
+        let required_fields = vec!["Track Title", "Artist"];
+        for field in required_fields {
+            if !map.contains_key(field) {
+                anyhow::bail!("TXT missing required field: {}", field)
+            }
+        }
+
+        // Map track data to a dictionary
         let data: Vec<BTreeMap<String, String>> = {
             lines[1..]
                 .iter()
@@ -117,11 +127,14 @@ impl Playlist {
                 .collect()
         };
 
+        // Drop file extension from file name
+        let name = path.with_extension("").file_name().unwrap().to_str().unwrap().to_string();
+
         Ok(Playlist {
             date: NaiveDateTime::default(),
             file: PathBuf::from(path),
             format: PlaylistFormat::Txt,
-            name: path.file_name().unwrap().to_str().unwrap().to_string(),
+            name,
             playlist_type: PlaylistType::Rekordbox,
             tracks,
         })
@@ -132,7 +145,7 @@ impl Playlist {
         let mut reader = Reader::from_path(path)
             .with_context(|| format!("Failed to open CSV file: '{}'", path.display()))?;
 
-        // map each header name to the row index they correspond to in the data, for example:
+        // map each header name to the column index they correspond to in the data, for example:
         // {"name": 0, "artist": 1, "start time": 2}
         let map: HashMap<String, usize> = {
             let headers = reader.headers()?;
@@ -152,6 +165,7 @@ impl Playlist {
             }
         }
 
+        // Map track data to a dictionary
         let data: Vec<BTreeMap<String, String>> = {
             reader
                 .records()
