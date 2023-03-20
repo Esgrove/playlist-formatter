@@ -9,6 +9,8 @@ use clap::Parser;
 use env_logger::Builder;
 use log::LevelFilter;
 
+use formatter::{FormattingStyle, Playlist};
+
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum Level {
     Debug,
@@ -38,6 +40,22 @@ struct Args {
     /// Log level
     #[arg(value_enum, short, long, help = "Log level", value_name = "LEVEL")]
     log: Option<Level>,
+
+    #[arg(
+        short,
+        long,
+        help = "Use simple print formatting style",
+        conflicts_with = "numbered"
+    )]
+    simple: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "Use numbered print formatting style",
+        conflicts_with = "simple"
+    )]
+    numbered: bool,
 
     /// Playlist file to process (required)
     file: String,
@@ -81,11 +99,17 @@ fn main() -> Result<()> {
 
     log::debug!("Playlist file: {}", filepath.display());
 
-    let formatter = formatter::Playlist::new(filepath);
+    let formatter = Playlist::new(filepath);
 
     log::debug!("{:#?}", formatter);
 
-    formatter.print_playlist();
+    formatter.print_playlist(if args.simple {
+        FormattingStyle::Simple
+    } else if args.numbered {
+        FormattingStyle::Numbered
+    } else {
+        FormattingStyle::Pretty
+    });
 
     Ok(())
 }

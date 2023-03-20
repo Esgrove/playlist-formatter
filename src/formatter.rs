@@ -28,6 +28,18 @@ pub enum PlaylistFormat {
     Csv,
 }
 
+/// Output formatting style for playlist printing
+#[derive(Default, Debug)]
+pub enum FormattingStyle {
+    /// Simple formatting, for example for sharing playlist text online
+    Simple,
+    /// Simple but with track numbers
+    Numbered,
+    /// Pretty formatting for human readable formatted CLI output
+    #[default]
+    Pretty,
+}
+
 /// Represents one played track
 #[derive(Debug)]
 struct Track {
@@ -288,27 +300,41 @@ impl Playlist {
         })
     }
 
-    pub fn format_playlist(&self) -> Vec<String> {
-        self.tracks
-            .iter()
-            .map(|track| {
-                format!(
-                    "{:<artist_width$} - {:<title_width$}",
-                    track.artist,
-                    track.title,
-                    artist_width = self.max_artist_length,
-                    title_width = self.max_title_length
-                )
-            })
-            .collect()
+    /// Print playlist with the given formatting style
+    pub fn print_playlist(&self, style: FormattingStyle) {
+        match style {
+            FormattingStyle::Simple => self.print_simple_playlist(),
+            FormattingStyle::Numbered => self.print_numbered_playlist(),
+            FormattingStyle::Pretty => self.print_pretty_playlist(),
+        }
     }
 
-    pub fn print_playlist(&self) {
-        let lines = self.format_playlist();
-        let index_width = lines.len().to_string().chars().count();
+    /// Print a simple playlist without any formatting
+    fn print_simple_playlist(&self) {
+        for track in self.tracks.iter() {
+            println!("{}", track.to_string());
+        }
+    }
+
+    /// Print a simple playlist with track numbers
+    fn print_numbered_playlist(&self) {
+        let index_width = self.tracks.len().to_string().chars().count();
+        for (index, track) in self.tracks.iter().enumerate() {
+            println!(
+                "{:>0index_width$}: {}",
+                index + 1,
+                track.to_string(),
+                index_width = index_width
+            );
+        }
+    }
+
+    /// Print a nicely formatted playlist
+    fn print_pretty_playlist(&self) {
+        let index_width = self.tracks.len().to_string().chars().count();
 
         let header = format!(
-            "{:<index_width$} {:<artist_width$}   {:<title_width$}",
+            "{:<index_width$}  {:<artist_width$}   {:<title_width$}",
             "#",
             "ARTIST",
             "TITLE",
@@ -323,12 +349,15 @@ impl Playlist {
         println!("{}", header.bold());
         println!("{divider}");
 
-        for (index, line) in lines.iter().enumerate() {
+        for (index, track) in self.tracks.iter().enumerate() {
             println!(
-                "{:>0index_width$} {}",
+                "{:>0index_width$}: {:<artist_width$} - {:<title_width$}",
                 index + 1,
-                line,
-                index_width = index_width
+                track.artist,
+                track.title,
+                index_width = index_width,
+                artist_width = self.max_artist_length,
+                title_width = self.max_title_length,
             );
         }
 
