@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
 use chrono::{Duration, NaiveDateTime, NaiveTime};
+use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use std::collections::{BTreeMap, HashMap};
@@ -15,14 +16,14 @@ use std::string::String;
 /// Which DJ software is the playlist from.
 /// Each software has their own formatting style.
 #[derive(Debug, PartialEq)]
-enum PlaylistType {
+pub enum PlaylistType {
     Rekordbox,
     Serato,
 }
 
 /// Playlist file type
 #[derive(Debug, PartialEq)]
-enum PlaylistFormat {
+pub enum PlaylistFormat {
     Txt,
     Csv,
 }
@@ -39,12 +40,54 @@ struct Track {
 /// Parsed playlist data
 #[derive(Debug)]
 pub(crate) struct Playlist {
-    date: NaiveDateTime,
-    file: PathBuf,
-    format: PlaylistFormat,
-    name: String,
-    playlist_type: PlaylistType,
+    pub date: NaiveDateTime,
+    pub file: PathBuf,
+    pub format: PlaylistFormat,
+    pub name: String,
+    pub playlist_type: PlaylistType,
     tracks: Vec<Track>,
+    max_artist_length: usize,
+    max_title_length: usize,
+}
+
+impl Track {
+    /// Create a simple track with only artist name and song title
+    pub fn new(artist: String, title: String) -> Track {
+        Track {
+            artist,
+            title,
+            start_time: None,
+            play_time: None,
+        }
+    }
+
+    /// Create a track with full information including start and play time.
+    pub fn new_with_time(
+        artist: String,
+        title: String,
+        start_time: NaiveDateTime,
+        play_time: Duration,
+    ) -> Track {
+        Track {
+            artist,
+            title,
+            start_time: Some(start_time),
+            play_time: Some(play_time),
+        }
+    }
+
+    /// Get the number of characters the artist name has
+    pub fn artist_length(&self) -> usize {
+        // .len() counts bytes, not chars
+        self.artist.chars().count()
+    }
+
+    /// Get the number of characters the song title has
+    pub fn title_length(&self) -> usize {
+        self.title.chars().count()
+    }
+
+    // Support summing to increase play time
 }
 
 impl Playlist {
@@ -128,7 +171,16 @@ impl Playlist {
         };
 
         // Drop file extension from file name
-        let name = path.with_extension("").file_name().unwrap().to_str().unwrap().to_string();
+        let name = path
+            .with_extension("")
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
+        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
 
         Ok(Playlist {
             date: NaiveDateTime::default(),
@@ -137,6 +189,8 @@ impl Playlist {
             name,
             playlist_type: PlaylistType::Rekordbox,
             tracks,
+            max_artist_length,
+            max_title_length,
         })
     }
 
@@ -219,6 +273,9 @@ impl Playlist {
                 .collect()
         };
 
+        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
+        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+
         Ok(Playlist {
             date: playlist_time,
             file: PathBuf::from(path),
@@ -226,15 +283,56 @@ impl Playlist {
             name: playlist_name.clone(),
             playlist_type: PlaylistType::Serato,
             tracks,
+            max_artist_length,
+            max_title_length,
         })
     }
 
-    fn format_playlist(&self) {
-        todo!();
+    pub fn format_playlist(&self) -> Vec<String> {
+        self.tracks
+            .iter()
+            .map(|track| {
+                format!(
+                    "{:<artist_width$} - {:<title_width$}",
+                    track.artist,
+                    track.title,
+                    artist_width = self.max_artist_length,
+                    title_width = self.max_title_length
+                )
+            })
+            .collect()
     }
 
-    fn print_playlist(&self) {
-        todo!();
+    pub fn print_playlist(&self) {
+        let lines = self.format_playlist();
+        let index_width = lines.len().to_string().chars().count();
+
+        let header = format!(
+            "{:<index_width$} {:<artist_width$}   {:<title_width$}",
+            "#",
+            "ARTIST",
+            "TITLE",
+            index_width = index_width,
+            artist_width = self.max_artist_length,
+            title_width = self.max_title_length
+        );
+
+        let header_width = header.chars().count();
+        let divider = "-".repeat(header_width);
+
+        println!("{}", header.bold());
+        println!("{divider}");
+
+        for (index, line) in lines.iter().enumerate() {
+            println!(
+                "{:>0index_width$} {}",
+                index + 1,
+                line,
+                index_width = index_width
+            );
+        }
+
+        println!("{divider}");
     }
 
     /// Get playlist format enum from file extension
@@ -264,10 +362,14 @@ impl fmt::Display for PlaylistType {
 
 impl fmt::Display for PlaylistFormat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            PlaylistFormat::Txt => "txt",
-            PlaylistFormat::Csv => "csv",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                PlaylistFormat::Txt => "txt",
+                PlaylistFormat::Csv => "csv",
+            }
+        )
     }
 }
 

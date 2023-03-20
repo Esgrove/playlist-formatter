@@ -83,7 +83,9 @@ fn main() -> Result<()> {
 
     let formatter = formatter::Playlist::new(filepath);
 
-    log::info!("{:#?}", formatter);
+    log::debug!("{:#?}", formatter);
+
+    formatter.print_playlist();
 
     Ok(())
 }
