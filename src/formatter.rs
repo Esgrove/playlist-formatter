@@ -6,7 +6,6 @@ use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
-use std::io::BufRead;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -23,13 +22,13 @@ pub enum PlaylistType {
 
 /// Playlist file type
 #[derive(Debug, PartialEq)]
-pub enum PlaylistFormat {
+pub enum FileFormat {
     Txt,
     Csv,
 }
 
 /// Output formatting style for playlist printing
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq)]
 pub enum FormattingStyle {
     /// Simple formatting, for example for sharing playlist text online
     Simple,
@@ -52,11 +51,12 @@ struct Track {
 /// Parsed playlist data
 #[derive(Debug)]
 pub(crate) struct Playlist {
-    pub date: NaiveDateTime,
+    pub date: Option<NaiveDateTime>,
+    pub file_format: FileFormat,
     pub file: PathBuf,
-    pub format: PlaylistFormat,
     pub name: String,
     pub playlist_type: PlaylistType,
+    pub total_duration: Option<Duration>,
     tracks: Vec<Track>,
     max_artist_length: usize,
     max_title_length: usize,
@@ -77,14 +77,14 @@ impl Track {
     pub fn new_with_time(
         artist: String,
         title: String,
-        start_time: NaiveDateTime,
-        play_time: Duration,
+        start_time: Option<NaiveDateTime>,
+        play_time: Option<Duration>,
     ) -> Track {
         Track {
             artist,
             title,
-            start_time: Some(start_time),
-            play_time: Some(play_time),
+            start_time,
+            play_time,
         }
     }
 
@@ -107,8 +107,8 @@ impl Playlist {
     pub fn new(file: &Path) -> Playlist {
         let format = Self::playlist_format(file);
         match format {
-            PlaylistFormat::Csv => Self::read_csv(file).unwrap(),
-            PlaylistFormat::Txt => Self::read_txt(file).unwrap(),
+            FileFormat::Csv => Self::read_csv(file).unwrap(),
+            FileFormat::Txt => Self::read_txt(file).unwrap(),
         }
     }
 
@@ -173,11 +173,11 @@ impl Playlist {
 
         let mut tracks: Vec<Track> = {
             data.iter()
-                .map(|row| Track {
-                    title: row.get("Track Title").unwrap().to_string(),
-                    artist: row.get("Artist").unwrap().to_string(),
-                    start_time: None,
-                    play_time: None,
+                .map(|row| {
+                    Track::new(
+                        row.get("Artist").unwrap().to_string(),
+                        row.get("Track Title").unwrap().to_string(),
+                    )
                 })
                 .collect()
         };
@@ -185,6 +185,8 @@ impl Playlist {
         // Remove consecutive duplicates
         // TODO: handle play times
         tracks.dedup();
+
+        let total_duration = get_total_playtime(&tracks);
 
         // Drop file extension from file name
         let name = path
@@ -199,14 +201,15 @@ impl Playlist {
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
 
         Ok(Playlist {
-            date: NaiveDateTime::default(),
+            date: None,
             file: PathBuf::from(path),
-            format: PlaylistFormat::Txt,
+            file_format: FileFormat::Txt,
             name,
             playlist_type: PlaylistType::Rekordbox,
             tracks,
             max_artist_length,
             max_title_length,
+            total_duration,
         })
     }
 
@@ -259,7 +262,7 @@ impl Playlist {
         // first row in Serato CSV is an info row with the playlist name and timestamp
         let playlist_name = &data[0].get("name").unwrap().to_string();
         // timestamp, for example "10.01.2019, 20.00.00 EET"
-        let playlist_time = NaiveDateTime::parse_from_str(
+        let playlist_date = NaiveDateTime::parse_from_str(
             data[0].get("start time").unwrap(),
             "%d.%m.%Y, %H.%M.%S %Z",
         )
@@ -274,17 +277,18 @@ impl Playlist {
                         match row.get("start time") {
                             None => None,
                             Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
-                                Ok(n) => Some(NaiveDateTime::new(playlist_time.date(), n)),
+                                Ok(n) => Some(NaiveDateTime::new(playlist_date.date(), n)),
                                 Err(_) => None,
                             },
                         }
                     };
-                    Track {
-                        title: row.get("name").unwrap().to_string(),
-                        artist: row.get("artist").unwrap().to_string(),
+                    // TODO: playtime
+                    Track::new_with_time(
+                        row.get("artist").unwrap().to_string(),
+                        row.get("name").unwrap().to_string(),
                         start_time,
-                        play_time: None,
-                    }
+                        Some(Duration::seconds(60)),
+                    )
                 })
                 .collect()
         };
@@ -293,19 +297,59 @@ impl Playlist {
         // TODO: handle play times
         tracks.dedup();
 
+        let total_duration = get_total_playtime(&tracks);
+
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
 
         Ok(Playlist {
-            date: playlist_time,
+            date: Some(playlist_date),
             file: PathBuf::from(path),
-            format: PlaylistFormat::Csv,
+            file_format: FileFormat::Csv,
             name: playlist_name.clone(),
             playlist_type: PlaylistType::Serato,
             tracks,
             max_artist_length,
             max_title_length,
+            total_duration,
         })
+    }
+
+    /// Print playlist information (but not the tracks themselves)
+    pub fn print_info(&self) {
+        println!("Playlist: {}", self.name.green(),);
+        println!("Filepath: {}", self.file.canonicalize().unwrap().display());
+        println!(
+            "Format: {}, Type: {}, Date: {}",
+            self.file_format,
+            self.playlist_type.to_string().cyan(),
+            if let Some(date) = self.date {
+                date.format("%Y.%m.%d %H:%M").to_string()
+            } else {
+                "unknown".to_string()
+            }
+        );
+        print!("Tracks: {}", self.tracks.len());
+        if let Some(duration) = self.total_duration {
+            let hours = duration.num_hours();
+            let minutes = duration.num_minutes();
+            let seconds = duration.num_seconds();
+            if minutes > 0 {
+                if minutes >= 60 {
+                    print!(
+                        ", Total duration: {}h:{:02}m:{:02}s",
+                        hours,
+                        minutes % 60,
+                        seconds % 60
+                    )
+                } else {
+                    print!(", Total duration: {}m:{:02}s", minutes, seconds % 60)
+                }
+                let average = seconds / self.tracks.len() as i64;
+                print!(" ({}m:{:02}s per track)", average / 60, average % 60)
+            }
+        };
+        println!("\n");
     }
 
     /// Print playlist with the given formatting style
@@ -373,19 +417,35 @@ impl Playlist {
     }
 
     /// Get playlist format enum from file extension
-    fn playlist_format(file: &Path) -> PlaylistFormat {
+    fn playlist_format(file: &Path) -> FileFormat {
         let extension = file.extension().unwrap().to_str().unwrap();
-        PlaylistFormat::from_str(extension).unwrap()
+        FileFormat::from_str(extension).unwrap()
+    }
+}
+
+/// Get total playtime for a list of tracks
+fn get_total_playtime(tracks: &[Track]) -> Option<Duration> {
+    let mut sum = Duration::seconds(0);
+    for track in tracks.iter() {
+        if let Some(duration) = track.play_time {
+            // chrono::Duration does not implement AddAssign or sum :(
+            sum = sum + duration;
+        }
+    }
+    if sum.is_zero() {
+        None
+    } else {
+        Some(sum)
     }
 }
 
 /// Convert string to enum
-impl FromStr for PlaylistFormat {
+impl FromStr for FileFormat {
     type Err = anyhow::Error;
-    fn from_str(input: &str) -> Result<PlaylistFormat> {
+    fn from_str(input: &str) -> Result<FileFormat> {
         match input.to_lowercase().as_str() {
-            "csv" => Ok(PlaylistFormat::Csv),
-            "txt" => Ok(PlaylistFormat::Txt),
+            "csv" => Ok(FileFormat::Csv),
+            "txt" => Ok(FileFormat::Txt),
             _ => Err(anyhow!("Unsupported file format: '{input}'")),
         }
     }
@@ -431,14 +491,14 @@ impl fmt::Display for PlaylistType {
     }
 }
 
-impl fmt::Display for PlaylistFormat {
+impl fmt::Display for FileFormat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                PlaylistFormat::Txt => "txt",
-                PlaylistFormat::Csv => "csv",
+                FileFormat::Txt => "txt",
+                FileFormat::Csv => "csv",
             }
         )
     }

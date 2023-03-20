@@ -1,15 +1,11 @@
 mod formatter;
-
-use std::io::Write;
-use std::path::Path;
-
 use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
-use env_logger::Builder;
-use log::LevelFilter;
-
 use formatter::{FormattingStyle, Playlist};
+use log::LevelFilter;
+use std::io::Write;
+use std::path::Path;
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum Level {
@@ -74,7 +70,7 @@ fn main() -> Result<()> {
     };
 
     // init logger with timestamps
-    Builder::new()
+    env_logger::Builder::new()
         .format(|buf, record| {
             writeln!(
                 buf,
@@ -99,17 +95,23 @@ fn main() -> Result<()> {
 
     log::debug!("Playlist file: {}", filepath.display());
 
-    let formatter = Playlist::new(filepath);
-
-    log::debug!("{:#?}", formatter);
-
-    formatter.print_playlist(if args.simple {
+    let style = if args.simple {
         FormattingStyle::Simple
     } else if args.numbered {
         FormattingStyle::Numbered
     } else {
         FormattingStyle::Pretty
-    });
+    };
+
+    let formatter = Playlist::new(filepath);
+
+    log::debug!("{:#?}", formatter);
+
+    if style == FormattingStyle::Pretty {
+        formatter.print_info();
+    }
+
+    formatter.print_playlist(style);
 
     Ok(())
 }
