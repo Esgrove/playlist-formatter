@@ -439,7 +439,7 @@ checksum = "ceedf44fb00f2d1984b0bc98102627ce622e083e49a5bacdb3e514fa4238e267"
 
 [[package]]
 name = "playlist_formatter"
-version = "0.1.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "chrono",
