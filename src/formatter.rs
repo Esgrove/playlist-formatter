@@ -5,13 +5,13 @@ use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use std::collections::{BTreeMap, HashMap};
-use std::fmt;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
+use std::{fmt, ops};
 
 /// Which DJ software is the playlist from.
 /// Each software has their own formatting style.
@@ -171,7 +171,7 @@ impl Playlist {
             log::debug!("{:#?}", row);
         }
 
-        let tracks: Vec<Track> = {
+        let mut tracks: Vec<Track> = {
             data.iter()
                 .map(|row| Track {
                     title: row.get("Track Title").unwrap().to_string(),
@@ -181,6 +181,10 @@ impl Playlist {
                 })
                 .collect()
         };
+
+        // Remove consecutive duplicates
+        // TODO: handle play times
+        tracks.dedup();
 
         // Drop file extension from file name
         let name = path
@@ -262,7 +266,7 @@ impl Playlist {
         .unwrap();
 
         // parse tracks
-        let tracks: Vec<Track> = {
+        let mut tracks: Vec<Track> = {
             data[1..]
                 .iter()
                 .map(|row| {
@@ -284,6 +288,10 @@ impl Playlist {
                 })
                 .collect()
         };
+
+        // Remove consecutive duplicates
+        // TODO: handle play times
+        tracks.dedup();
 
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
@@ -312,7 +320,7 @@ impl Playlist {
     /// Print a simple playlist without any formatting
     fn print_simple_playlist(&self) {
         for track in self.tracks.iter() {
-            println!("{}", track.to_string());
+            println!("{}", track);
         }
     }
 
@@ -323,7 +331,7 @@ impl Playlist {
             println!(
                 "{:>0index_width$}: {}",
                 index + 1,
-                track.to_string(),
+                track,
                 index_width = index_width
             );
         }
@@ -379,6 +387,40 @@ impl FromStr for PlaylistFormat {
             "csv" => Ok(PlaylistFormat::Csv),
             "txt" => Ok(PlaylistFormat::Txt),
             _ => Err(anyhow!("Unsupported file format: '{input}'")),
+        }
+    }
+}
+
+impl PartialEq for Track {
+    fn eq(&self, other: &Self) -> bool {
+        self.artist == other.artist && self.title == other.title
+    }
+}
+
+/// Add duration to play time
+impl ops::Add<Duration> for Track {
+    type Output = Track;
+    fn add(self, duration: Duration) -> Track {
+        Track {
+            artist: self.artist,
+            title: self.title,
+            start_time: self.start_time,
+            play_time: if let Some(time) = self.play_time {
+                Some(time + duration)
+            } else {
+                Some(duration)
+            },
+        }
+    }
+}
+
+/// Add duration to play time
+impl ops::AddAssign<Duration> for Track {
+    fn add_assign(&mut self, duration: Duration) {
+        if let Some(time) = self.play_time {
+            self.play_time = Some(time + duration)
+        } else {
+            self.play_time = Some(duration)
         }
     }
 }
