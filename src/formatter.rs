@@ -6,6 +6,8 @@ use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use home::home_dir;
 use std::collections::{BTreeMap, HashMap};
+use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -383,7 +385,7 @@ impl Playlist {
             None => None,
         };
 
-        let path = if let Some(mut value) = potential_path {
+        let path = if let Some(value) = potential_path {
             log::info!("Got output path: {}", value.display());
             // Possible options here:
             // 1. full path to file
@@ -400,9 +402,12 @@ impl Playlist {
                 None => false,
             };
             if !has_valid_file_extension {
-                value.push(".csv");
+                // Can't use `with_extension` here since it will replace anything after the last dot,
+                // which will alter the name if it contains a date separated by dots for example.
+                append_extension_to_pathbuf(value, "csv")
+            } else {
+                value
             }
-            value
         } else {
             log::debug!("Empty output path given, using default...");
             let mut save_dir: PathBuf = self.default_save_dir();
@@ -566,6 +571,16 @@ fn get_total_playtime(tracks: &[Track]) -> Option<Duration> {
     } else {
         Some(sum)
     }
+}
+
+/// Append extension to PathBuf, which is somehow missing completely from the standard lib :(
+///
+/// https://internals.rust-lang.org/t/pathbuf-has-set-extension-but-no-add-extension-cannot-cleanly-turn-tar-to-tar-gz/14187/10
+fn append_extension_to_pathbuf(path: PathBuf, extension: impl AsRef<OsStr>) -> PathBuf {
+    let mut os_string: OsString = path.into();
+    os_string.push(".");
+    os_string.push(extension.as_ref());
+    os_string.into()
 }
 
 /// Convert string to enum
