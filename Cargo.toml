@@ -1,11 +1,12 @@
 [package]
-name = "playlist_formatter"
-version = "0.8.0"
-edition = "2021"
 authors = ["Akseli Lukkarila <esgrove@outlook.com>"]
 description = "DJ playlist formatting utility"
+edition = "2021"
 license = "MIT"
+name = "playlist_formatter"
+readme = "README.md"
 repository = "https://github.com/Esgrove/playlist_tool"
+version = "0.8.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
