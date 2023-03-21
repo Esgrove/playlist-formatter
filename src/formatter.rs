@@ -4,6 +4,7 @@ use chrono::{Duration, NaiveDateTime, NaiveTime};
 use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
+use home::home_dir;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::Read;
@@ -30,9 +31,9 @@ pub enum FileFormat {
 /// Output formatting style for playlist printing
 #[derive(Default, Debug, PartialEq)]
 pub enum FormattingStyle {
-    /// Simple formatting, for example for sharing playlist text online
-    Simple,
-    /// Simple but with track numbers
+    /// Basic formatting, for example for sharing playlist text online
+    Basic,
+    /// Basic formatting but with track numbers
     Numbered,
     /// Pretty formatting for human readable formatted CLI output
     #[default]
@@ -355,10 +356,77 @@ impl Playlist {
     /// Print playlist with the given formatting style
     pub fn print_playlist(&self, style: FormattingStyle) {
         match style {
-            FormattingStyle::Simple => self.print_simple_playlist(),
+            FormattingStyle::Basic => self.print_simple_playlist(),
             FormattingStyle::Numbered => self.print_numbered_playlist(),
             FormattingStyle::Pretty => self.print_pretty_playlist(),
         }
+    }
+
+    /// Write playlist to file.
+    ///
+    /// File path and type will be parsed from the cli option if present.
+    /// Otherwise, will try to use default path and file format.
+    pub fn save_playlist_to_file(
+        &self,
+        filepath: Option<String>,
+        overwrite_existing: bool,
+    ) -> Result<()> {
+        let potential_path: Option<PathBuf> = match filepath {
+            Some(value) => {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(trimmed))
+                }
+            }
+            None => None,
+        };
+
+        let path = if let Some(mut value) = potential_path {
+            log::info!("Got output path: {}", value.display());
+            // Possible options here:
+            // 1. full path to file
+            // 2. file name with extension
+            // 3. file name without extension
+            // ->
+            // check if there is a file extension, and add default if not
+            // check if it is a path
+            let has_valid_file_extension = match value.extension() {
+                Some(extension) => {
+                    // check if this is a supported file format
+                    FileFormat::from_str(extension.to_str().unwrap()).is_ok()
+                }
+                None => false,
+            };
+            if !has_valid_file_extension {
+                value.push(".csv");
+            }
+            value
+        } else {
+            log::debug!("Empty output path given, using default...");
+            let mut save_dir: PathBuf = self.default_save_dir();
+
+            log::info!("Using default save dir: {}", save_dir.display());
+            save_dir.push(self.file.with_extension("csv"));
+            save_dir
+        };
+
+        log::info!("Saving to: {}", path.display());
+
+        if path.is_file() {
+            log::info!("Output file already exists: {}", path.display());
+            if !overwrite_existing {
+                anyhow::bail!(
+                    "use the {} option overwrite an existing output file",
+                    "force".bold()
+                );
+            } else {
+                log::info!("Overwriting existing file")
+            }
+        }
+
+        self.write_playlist_file(path.as_path())
     }
 
     /// Print a simple playlist without any formatting
@@ -420,6 +488,67 @@ impl Playlist {
     fn playlist_format(file: &Path) -> FileFormat {
         let extension = file.extension().unwrap().to_str().unwrap();
         FileFormat::from_str(extension).unwrap()
+    }
+
+    /// Return default save directory for playlist output file.
+    ///
+    /// This will first try to use the Dropbox playlist directory if it exists on disk.
+    /// After that, it will try the get the directory of the input file.
+    /// Otherwise returns an empty path so the file will go to the current working directory.
+    fn default_save_dir(&self) -> PathBuf {
+        if let Some(dir) = Playlist::dropbox_save_dir() {
+            dir
+        } else {
+            let default_dir = match self.file.canonicalize() {
+                Ok(path) => match path.parent() {
+                    Some(parent) => parent.to_path_buf(),
+                    None => PathBuf::new(),
+                },
+                Err(error) => {
+                    log::error!("Failed to resolve full path to input file: {}", error);
+                    PathBuf::new()
+                }
+            };
+            default_dir
+        }
+    }
+
+    fn write_playlist_file(&self, filepath: &Path) -> Result<()> {
+        match filepath
+            .extension()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_lowercase()
+            .as_str()
+        {
+            "csv" => self.write_csv_file(filepath),
+            "txt" => self.write_txt_file(filepath),
+            _ => anyhow::bail!("Unsupported file extension"),
+        }
+    }
+
+    fn write_csv_file(&self, filepath: &Path) -> Result<()> {
+        println!("Writing csv: {}", filepath.display());
+        Ok(())
+    }
+
+    fn write_txt_file(&self, filepath: &Path) -> Result<()> {
+        println!("Writing txt: {}", filepath.display());
+        Ok(())
+    }
+
+    /// Get DJ playlist path in Dropbox if it exists
+    fn dropbox_save_dir() -> Option<PathBuf> {
+        let path = if cfg!(target_os = "windows") {
+            Some(PathBuf::from("D:\\Dropbox\\DJ\\PLAYLIST"))
+        } else if let Some(mut home) = home_dir() {
+            home.push("Dropbox/DJ/PLAYLIST");
+            Some(home)
+        } else {
+            None
+        };
+        path.filter(|p| p.is_dir())
     }
 }
 
@@ -499,6 +628,20 @@ impl fmt::Display for FileFormat {
             match self {
                 FileFormat::Txt => "txt",
                 FileFormat::Csv => "csv",
+            }
+        )
+    }
+}
+
+impl fmt::Display for FormattingStyle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                FormattingStyle::Basic => "basic",
+                FormattingStyle::Numbered => "numbered",
+                FormattingStyle::Pretty => "pretty",
             }
         )
     }

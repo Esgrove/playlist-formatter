@@ -3,10 +3,9 @@ use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
 use formatter::{FormattingStyle, Playlist};
-use home::home_dir;
 use log::LevelFilter;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum Level {
@@ -30,39 +29,55 @@ enum Level {
     arg_required_else_help = true
 )]
 struct Args {
+    /// Playlist file to process (required)
+    file: String,
+
+    /// Optional output path. Specifying this will automatically save the playlist.
+    output: Option<String>,
+
     /// Overwrite an existing file
     #[arg(short, long, help = "Overwrite an existing file")]
-    overwrite: bool,
+    force: bool,
 
     /// Log level
     #[arg(value_enum, short, long, help = "Log level", value_name = "LEVEL")]
     log: Option<Level>,
 
+    /// Basic formatting style
     #[arg(
         short,
         long,
-        help = "Use simple print formatting style",
+        help = "Use basic print formatting style",
         conflicts_with = "numbered"
     )]
-    simple: bool,
+    basic: bool,
 
+    /// Numbered formatting style
     #[arg(
         short,
         long,
         help = "Use numbered print formatting style",
-        conflicts_with = "simple"
+        conflicts_with = "basic"
     )]
     numbered: bool,
 
-    /// Playlist file to process (required)
-    file: String,
+    /// Write playlist to file
+    #[arg(
+        short,
+        long,
+        help = "Save formatted playlist to file",
+        long_help = "Save formatted playlist to file. This can be a name or path. Empty value will use default path",
+        value_name = "OUTPUT_FILE",
+        conflicts_with = "output"
+    )]
+    save: Option<Option<String>>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
     let log_level_filter = match args.log {
         None => LevelFilter::Info,
-        Some(level) => match level {
+        Some(ref level) => match level {
             Level::Debug => LevelFilter::Debug,
             Level::Info => LevelFilter::Info,
             Level::Warn => LevelFilter::Warn,
@@ -86,7 +101,15 @@ fn main() -> Result<()> {
 
     log::debug!("Using log level: {:?}", log_level_filter);
 
-    let filepath = Path::new(&args.file);
+    run_playlist_formatter_cli(args)
+}
+
+fn run_playlist_formatter_cli(args: Args) -> Result<()> {
+    let input_file = args.file.trim();
+    if input_file.is_empty() {
+        anyhow::bail!("empty input file");
+    }
+    let filepath = Path::new(input_file);
     if !filepath.is_file() {
         anyhow::bail!(
             "file does not exist or is not accessible: '{}'",
@@ -96,13 +119,15 @@ fn main() -> Result<()> {
 
     log::debug!("Playlist file: {}", filepath.display());
 
-    let style = if args.simple {
-        FormattingStyle::Simple
+    let style = if args.basic {
+        FormattingStyle::Basic
     } else if args.numbered {
         FormattingStyle::Numbered
     } else {
         FormattingStyle::Pretty
     };
+
+    log::debug!("Formatting style: {style}");
 
     let formatter = Playlist::new(filepath);
 
@@ -114,32 +139,13 @@ fn main() -> Result<()> {
 
     formatter.print_playlist(style);
 
-    let default_save_dir: PathBuf = {
-        if let Some(dir) = save_dir() {
-            dir
-        } else {
-            filepath
-                .canonicalize()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .to_path_buf()
-        }
-    };
-
-    log::debug!("default_save_dir: {}", default_save_dir.display());
+    if let Some(save_arg) = args.save {
+        log::debug!("Saving playlist to file");
+        formatter.save_playlist_to_file(save_arg, args.force)?;
+    } else if args.output.is_some() {
+        log::debug!("Outputting to file");
+        formatter.save_playlist_to_file(args.output, args.force)?;
+    }
 
     Ok(())
-}
-
-fn save_dir() -> Option<PathBuf> {
-    let path = if cfg!(target_os = "windows") {
-        Some(PathBuf::from("D:\\Dropbox\\DJ\\PLAYLIST"))
-    } else if let Some(mut home) = home_dir() {
-        home.push("Dropbox/DJ/PLAYLIST");
-        Some(home)
-    } else {
-        None
-    };
-    path.filter(|p| p.is_dir())
 }
