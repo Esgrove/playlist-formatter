@@ -3,9 +3,10 @@ use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
 use formatter::{FormattingStyle, Playlist};
+use home::home_dir;
 use log::LevelFilter;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum Level {
@@ -113,5 +114,32 @@ fn main() -> Result<()> {
 
     formatter.print_playlist(style);
 
+    let default_save_dir: PathBuf = {
+        if let Some(dir) = save_dir() {
+            dir
+        } else {
+            filepath
+                .canonicalize()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .to_path_buf()
+        }
+    };
+
+    log::debug!("default_save_dir: {}", default_save_dir.display());
+
     Ok(())
+}
+
+fn save_dir() -> Option<PathBuf> {
+    let path = if cfg!(target_os = "windows") {
+        Some(PathBuf::from("D:\\Dropbox\\DJ\\PLAYLIST"))
+    } else if let Some(mut home) = home_dir() {
+        home.push("Dropbox/DJ/PLAYLIST");
+        Some(home)
+    } else {
+        None
+    };
+    path.filter(|p| p.is_dir())
 }

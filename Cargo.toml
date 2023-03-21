@@ -17,6 +17,7 @@ colored = "2.0.0"
 csv = "1.2.1"
 encoding_rs_io = "0.1.7"
 env_logger = "0.10.0"
+home = "0.5.4"
 log = "0.4.17"
 titlecase = "2.2.1"
 
