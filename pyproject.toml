@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "playlist_formatter"
 description = "Tool for auto-formatting DJ playlists exported from DJ software."
 authors = [{ name = "Akseli Lukkarila", email = "esgrove@outlook.com" }]
-license = "MIT"
+license = { text = "MIT" }
 requires-python = ">=3.9"
 dynamic = ["version"]
 dependencies = [
