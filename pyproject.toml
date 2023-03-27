@@ -17,7 +17,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 120
 py_version = 311
-sections=["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 extend_skip = [".idea", ".vscode", ".venv", "venv"]
 extend_skip_glob = ["venv*/"]
 

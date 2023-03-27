@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional, Self
+from typing import Self
 
 import chardet
 import colorama
