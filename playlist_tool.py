@@ -7,6 +7,6 @@ from PlaylistFormatter.PlaylistGui import run_gui
 if __name__ == "__main__":
     # arguments given, run on command line
     if len(sys.argv) > 1:
-        run_cli()
+        run_cli(sys.argv[1:])
     else:
         run_gui()
