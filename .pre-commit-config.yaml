@@ -1,0 +1,56 @@
+exclude: ^(.idea|.vscode)/
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    # https://github.com/pre-commit/pre-commit-hooks
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+  - repo: https://github.com/psf/black
+    rev: 23.1.0
+    hooks:
+      - id: black
+        name: python black
+        language_version: python3.11
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        name: python flake8
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: python isort
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.3.1
+    hooks:
+      - id: pyupgrade
+        name: python pyupgrade
+        args: [--py39-plus]
+  - repo: local
+    hooks:
+      - id: rust-fmt
+        name: rust format
+        description: Run cargo fmt on files included in the commit. rustfmt should be installed before-hand.
+        entry: bash -c 'cargo fmt'
+        pass_filenames: true
+        types: [file, rust]
+        language: system
+      - id: rust-clippy
+        name: rust lint
+        description: Run cargo clippy on files included in the commit. clippy should be installed before-hand.
+        entry: bash -c 'cargo clippy'
+        pass_filenames: false
+        types: [file, rust]
+        language: system
