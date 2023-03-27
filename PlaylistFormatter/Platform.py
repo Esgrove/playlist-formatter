@@ -11,7 +11,7 @@ try:
     # Python 3.11+
     from typing import Self
 except ImportError:
-    from typing_extensions import Self
+    from typing_extensions import Self  # noqa: UP035
 
 
 class Platform(Enum):

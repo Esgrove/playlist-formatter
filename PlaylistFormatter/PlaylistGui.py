@@ -1,3 +1,4 @@
+# ruff: noqa: N802
 """
 Playlist Formatter GUI
 Akseli Lukkarila
