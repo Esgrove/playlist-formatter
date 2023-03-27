@@ -1,3 +1,33 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "playlist_formatter"
+description = "Tool for auto-formatting DJ playlists exported from DJ software."
+authors = [{ name = "Akseli Lukkarila", email = "esgrove@outlook.com" }]
+license = "MIT"
+requires-python = ">=3.9"
+dynamic = ["version"]
+dependencies = [
+    "chardet",
+    "colorama",
+    "darkdetect",
+    "PyQt6",
+    "titlecase",
+    "typing_extensions==4.5.0;python_version<'3.11'",
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.urls]
+"Homepage" = "https://github.com/Esgrove/playlist_tool"
+
+[project.optional-dependencies]
+dev = ['black', 'isort', 'pip-tools', 'pyupgrade', 'ruff']
+
 [tool.black]
 # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
 line-length = 120
