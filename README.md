@@ -20,7 +20,7 @@ Implemented in a somewhat hacky way with _Selenium_, as I could not get it worki
 
 ## Dependencies
 
-- Python 3.11+ (due to use of `Self` type hinting :sweat_smile:)
+- Python 3.11+ recommended (due to use of `Self` type hinting), but 3.9+ possible with [typing_extensions](https://github.com/python/typing_extensions)
 - [requirements.txt](./requirements.txt)
 
 ## Looks like
