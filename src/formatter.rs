@@ -518,6 +518,7 @@ impl Playlist {
         }
     }
 
+    /// Write playlist to file. Filepath needs to be a ".txt" or ".csv" file.
     fn write_playlist_file(&self, filepath: &Path) -> Result<()> {
         match filepath
             .extension()
@@ -533,11 +534,18 @@ impl Playlist {
         }
     }
 
+    /// Write tracks to CSV file
     fn write_csv_file(&self, filepath: &Path) -> Result<()> {
-        println!("Writing csv: {}", filepath.display());
+        let mut writer = csv::Writer::from_path(filepath)?;
+        writer.write_record(["artist", "", "title"])?;
+        for track in self.tracks.iter() {
+            writer.write_record([track.artist.clone(), "-".to_string(), track.title.clone()])?;
+        }
+        writer.flush()?;
         Ok(())
     }
 
+    /// Write tracks to TXT file
     fn write_txt_file(&self, filepath: &Path) -> Result<()> {
         println!("Writing txt: {}", filepath.display());
         Ok(())
