@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
-use chrono::{Duration, NaiveDateTime, NaiveTime};
+use chrono::{NaiveDateTime, NaiveTime};
 use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
@@ -459,10 +459,11 @@ impl Playlist {
         let index_width = self.tracks.len().to_string().chars().count();
 
         let header = format!(
-            "{:<index_width$}  {:<artist_width$}   {:<title_width$}",
+            "{:<index_width$}   {:<artist_width$}   {:<title_width$}   {}",
             "#",
             "ARTIST",
             "TITLE",
+            "PLAYTIME",
             index_width = index_width,
             artist_width = self.max_artist_length,
             title_width = self.max_title_length
@@ -476,10 +477,15 @@ impl Playlist {
 
         for (index, track) in self.tracks.iter().enumerate() {
             println!(
-                "{:>0index_width$}: {:<artist_width$} - {:<title_width$}",
+                "{:>0index_width$}   {:<artist_width$}   {:<title_width$}   {:<}",
                 index + 1,
                 track.artist,
                 track.title,
+                if let Some(d) = track.play_time {
+                    d.to_string()
+                } else {
+                    "".to_string()
+                },
                 index_width = index_width,
                 artist_width = self.max_artist_length,
                 title_width = self.max_title_length,
@@ -547,7 +553,10 @@ impl Playlist {
 
     /// Write tracks to TXT file
     fn write_txt_file(&self, filepath: &Path) -> Result<()> {
-        println!("Writing txt: {}", filepath.display());
+        let mut file = File::create(filepath)?;
+        for track in self.tracks.iter() {
+            file.write_all(format!("{} - {}\n", track.artist, track.title).as_ref())?;
+        }
         Ok(())
     }
 
