@@ -1,10 +1,11 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
-use chrono::{NaiveDateTime, NaiveTime};
+use chrono::{Duration, NaiveDateTime, NaiveTime};
 use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use home::home_dir;
+use std::cmp::max;
 use std::collections::{BTreeMap, HashMap};
 use std::ffi::OsStr;
 use std::ffi::OsString;
@@ -63,6 +64,7 @@ pub(crate) struct Playlist {
     tracks: Vec<Track>,
     max_artist_length: usize,
     max_title_length: usize,
+    max_playtime_length: usize,
 }
 
 impl Track {
@@ -202,6 +204,18 @@ impl Playlist {
 
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+        let max_playtime_length: usize = max(
+            "PLAYTIME".to_string().chars().count(),
+            tracks
+                .iter()
+                .map(|t| {
+                    formatted_duration(t.play_time.unwrap_or(Duration::seconds(0)))
+                        .chars()
+                        .count()
+                })
+                .max()
+                .unwrap_or(0),
+        );
 
         Ok(Playlist {
             date: None,
@@ -212,6 +226,7 @@ impl Playlist {
             tracks,
             max_artist_length,
             max_title_length,
+            max_playtime_length,
             total_duration,
         })
     }
@@ -304,6 +319,18 @@ impl Playlist {
 
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+        let max_playtime_length: usize = max(
+            "PLAYTIME".to_string().chars().count(),
+            tracks
+                .iter()
+                .map(|t| {
+                    formatted_duration(t.play_time.unwrap_or(Duration::seconds(0)))
+                        .chars()
+                        .count()
+                })
+                .max()
+                .unwrap_or(0),
+        );
 
         Ok(Playlist {
             date: Some(playlist_date),
@@ -314,6 +341,7 @@ impl Playlist {
             tracks,
             max_artist_length,
             max_title_length,
+            max_playtime_length,
             total_duration,
         })
     }
@@ -334,23 +362,9 @@ impl Playlist {
         );
         print!("Tracks: {}", self.tracks.len());
         if let Some(duration) = self.total_duration {
-            let hours = duration.num_hours();
-            let minutes = duration.num_minutes();
-            let seconds = duration.num_seconds();
-            if minutes > 0 {
-                if minutes >= 60 {
-                    print!(
-                        ", Total duration: {}h:{:02}m:{:02}s",
-                        hours,
-                        minutes % 60,
-                        seconds % 60
-                    )
-                } else {
-                    print!(", Total duration: {}m:{:02}s", minutes, seconds % 60)
-                }
-                let average = seconds / self.tracks.len() as i64;
-                print!(" ({}m:{:02}s per track)", average / 60, average % 60)
-            }
+            print!(", Total duration: {}", formatted_duration(duration));
+            let average = Duration::seconds(duration.num_seconds() / self.tracks.len() as i64);
+            print!(" ({} per track)", formatted_duration(average))
         };
         println!("\n");
     }
@@ -459,14 +473,15 @@ impl Playlist {
         let index_width = self.tracks.len().to_string().chars().count();
 
         let header = format!(
-            "{:<index_width$}   {:<artist_width$}   {:<title_width$}   {}",
+            "{:<index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
             "#",
             "ARTIST",
             "TITLE",
             "PLAYTIME",
             index_width = index_width,
             artist_width = self.max_artist_length,
-            title_width = self.max_title_length
+            title_width = self.max_title_length,
+            playtime_width = self.max_playtime_length
         );
 
         let header_width = header.chars().count();
@@ -477,18 +492,19 @@ impl Playlist {
 
         for (index, track) in self.tracks.iter().enumerate() {
             println!(
-                "{:>0index_width$}   {:<artist_width$}   {:<title_width$}   {:<}",
+                "{:>0index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
                 index + 1,
                 track.artist,
                 track.title,
                 if let Some(d) = track.play_time {
-                    d.to_string()
+                    formatted_duration(d)
                 } else {
                     "".to_string()
                 },
                 index_width = index_width,
                 artist_width = self.max_artist_length,
                 title_width = self.max_title_length,
+                playtime_width = self.max_playtime_length
             );
         }
 
@@ -588,6 +604,21 @@ fn get_total_playtime(tracks: &[Track]) -> Option<Duration> {
     } else {
         Some(sum)
     }
+}
+
+/// Format duration as a string either as H:MM:SS or MM:SS depending on the duration.
+fn formatted_duration(duration: Duration) -> String {
+    let hours = duration.num_hours();
+    let minutes = duration.num_minutes();
+    let seconds = duration.num_seconds();
+    if seconds > 0 {
+        if minutes >= 60 {
+            return format!("{}h:{:02}m:{:02}s", hours, minutes % 60, seconds % 60);
+        } else {
+            return format!("{:02}m:{:02}s", minutes, seconds % 60);
+        }
+    }
+    "".to_string()
 }
 
 /// Append extension to PathBuf, which is somehow missing completely from the standard lib :(
