@@ -177,12 +177,12 @@ class PlaylistFormatter:
                     playlist_index += 1
                     previous_time = play_time
 
-            for i in range(1, len(playlist)):
-                playlist[i - 1]["playtime"] = playlist[i]["playtime"]
+        for i in range(1, len(playlist)):
+            playlist[i - 1]["playtime"] = playlist[i]["playtime"]
 
-            self.playlist = playlist
-            self.playlist_file = filename
-            self.playlist_type = PlaylistType.SERATO
+        self.playlist = playlist
+        self.playlist_file = filename
+        self.playlist_type = PlaylistType.SERATO
 
     def _read_xls(self, filename: str):
         """Read Excel playlist."""
