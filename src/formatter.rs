@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
-use chrono::{Duration, NaiveDateTime, NaiveTime};
+use chrono::{Duration, NaiveDateTime, NaiveTime, Timelike};
 use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
@@ -44,11 +44,12 @@ pub enum FormattingStyle {
 }
 
 /// Represents one played track
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Track {
     artist: String,
     title: String,
     start_time: Option<NaiveDateTime>,
+    end_time: Option<NaiveDateTime>,
     play_time: Option<Duration>,
 }
 
@@ -74,6 +75,7 @@ impl Track {
             artist,
             title,
             start_time: None,
+            end_time: None,
             play_time: None,
         }
     }
@@ -83,12 +85,14 @@ impl Track {
         artist: String,
         title: String,
         start_time: Option<NaiveDateTime>,
+        end_time: Option<NaiveDateTime>,
         play_time: Option<Duration>,
     ) -> Track {
         Track {
             artist,
             title,
             start_time,
+            end_time,
             play_time,
         }
     }
@@ -238,7 +242,7 @@ impl Playlist {
 
         // map each header name to the column index they correspond to in the data, for example:
         // {"name": 0, "artist": 1, "start time": 2}
-        let map: HashMap<String, usize> = {
+        let header_map: BTreeMap<String, usize> = {
             let headers = reader.headers()?;
             headers
                 .iter()
@@ -247,23 +251,27 @@ impl Playlist {
                 .collect()
         };
 
-        log::debug!("CSV headers ({}): {:?}", map.keys().len(), map.keys());
+        log::debug!(
+            "CSV headers ({}): {:?}",
+            header_map.keys().len(),
+            header_map.keys()
+        );
 
         let required_fields = vec!["name", "artist"];
         for field in required_fields {
-            if !map.contains_key(field) {
+            if !header_map.contains_key(field) {
                 anyhow::bail!("CSV missing required field: {}", field)
             }
         }
 
-        // Map track data to a dictionary
+        // Map track data to a dictionary (header key: value)
         let data: Vec<BTreeMap<String, String>> = {
             reader
                 .records()
                 .map(|s| {
                     let record = s.unwrap();
                     let mut items: BTreeMap<String, String> = BTreeMap::new();
-                    for (name, index) in &map {
+                    for (name, index) in &header_map {
                         let value = &record[*index];
                         items.insert(name.to_string(), value.to_string());
                     }
@@ -287,7 +295,7 @@ impl Playlist {
         .unwrap();
 
         // parse tracks
-        let mut tracks: Vec<Track> = {
+        let initial_tracks: Vec<Track> = {
             data[1..]
                 .iter()
                 .map(|row| {
@@ -300,16 +308,52 @@ impl Playlist {
                             },
                         }
                     };
-                    // TODO: playtime
+                    let end_time: Option<NaiveDateTime> = {
+                        match row.get("end time") {
+                            None => None,
+                            Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
+                                Ok(n) => Some(NaiveDateTime::new(playlist_date.date(), n)),
+                                Err(_) => None,
+                            },
+                        }
+                    };
+                    let play_time: Option<Duration> = {
+                        match row.get("playtime") {
+                            None => None,
+                            Some(t) => match NaiveTime::parse_from_str(t, "%H:%M:%S") {
+                                Ok(n) => Some(
+                                    Duration::hours(n.hour() as i64)
+                                        + Duration::minutes(n.minute() as i64)
+                                        + Duration::seconds(n.second() as i64),
+                                ),
+                                Err(_) => None,
+                            },
+                        }
+                    };
                     Track::new_with_time(
                         row.get("artist").unwrap().to_string(),
                         row.get("name").unwrap().to_string(),
                         start_time,
-                        Some(Duration::seconds(60)),
+                        end_time,
+                        play_time,
                     )
                 })
                 .collect()
         };
+
+        let mut new_tracks_index: usize = 0;
+        let mut tracks: Vec<Track> = vec![initial_tracks[0].clone()];
+        for track in initial_tracks[1..].iter() {
+            let previous_track = &tracks[new_tracks_index];
+            if *previous_track == *track {
+                // duplicate track -> add playtime to previous
+                tracks[new_tracks_index] = previous_track.clone() + track.play_time
+            } else {
+                // new track, append to playlist
+                tracks.push(track.clone());
+                new_tracks_index += 1;
+            }
+        }
 
         // Remove consecutive duplicates
         // TODO: handle play times
@@ -613,9 +657,9 @@ fn formatted_duration(duration: Duration) -> String {
     let seconds = duration.num_seconds();
     if seconds > 0 {
         if minutes >= 60 {
-            return format!("{}h:{:02}m:{:02}s", hours, minutes % 60, seconds % 60);
+            return format!("{}:{:02}:{:02}", hours, minutes % 60, seconds % 60);
         } else {
-            return format!("{:02}m:{:02}s", minutes, seconds % 60);
+            return format!("{}:{:02}", minutes, seconds % 60);
         }
     }
     "".to_string()
@@ -657,11 +701,32 @@ impl ops::Add<Duration> for Track {
             artist: self.artist,
             title: self.title,
             start_time: self.start_time,
+            end_time: self.end_time,
             play_time: if let Some(time) = self.play_time {
                 Some(time + duration)
             } else {
                 Some(duration)
             },
+        }
+    }
+}
+
+impl ops::Add<Option<Duration>> for Track {
+    type Output = Track;
+    fn add(self, duration: Option<Duration>) -> Track {
+        let play_time = match self.play_time {
+            Some(time) => match duration {
+                None => Some(time),
+                Some(d) => Some(time + d),
+            },
+            None => duration,
+        };
+        Track {
+            artist: self.artist,
+            title: self.title,
+            start_time: self.start_time,
+            end_time: self.end_time,
+            play_time,
         }
     }
 }
