@@ -543,9 +543,9 @@ impl Playlist {
                 track.artist,
                 track.title,
                 if let Some(d) = track.play_time {
-                    formatted_duration(d)
+                    formatted_duration(d).green()
                 } else {
-                    "".to_string()
+                    "".normal()
                 },
                 index_width = index_width,
                 artist_width = self.max_artist_length,
