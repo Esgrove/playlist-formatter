@@ -113,7 +113,6 @@ impl Playlist {
         };
 
         // Remove consecutive duplicates
-        // TODO: handle play times
         tracks.dedup();
 
         let total_duration = utils::get_total_playtime(&tracks);
@@ -252,12 +251,13 @@ impl Playlist {
                 .collect()
         };
 
+        // Remove consecutive duplicates
         let mut new_tracks_index: usize = 0;
         let mut tracks: Vec<Track> = vec![initial_tracks[0].clone()];
         for track in initial_tracks[1..].iter() {
             let previous_track = &tracks[new_tracks_index];
             if *previous_track == *track {
-                // duplicate track -> add playtime to previous
+                // duplicate track -> add playtime to previous and skip
                 tracks[new_tracks_index] = previous_track.clone() + track.play_time
             } else {
                 // new track, append to playlist
@@ -265,10 +265,6 @@ impl Playlist {
                 new_tracks_index += 1;
             }
         }
-
-        // Remove consecutive duplicates
-        // TODO: handle play times
-        tracks.dedup();
 
         let total_duration = utils::get_total_playtime(&tracks);
 
