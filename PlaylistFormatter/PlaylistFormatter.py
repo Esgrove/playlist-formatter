@@ -27,8 +27,8 @@ class PlaylistFormat(Enum):
     CSV = auto()
     TXT = auto()
 
-    @staticmethod
-    def from_str(label: str) -> Self:
+    @classmethod
+    def from_str(cls, label: str) -> Self:
         match label.lower():
             case ("txt", ".txt"):
                 return PlaylistFormat.CSV
