@@ -208,18 +208,8 @@ impl Playlist {
 
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-        let max_playtime_length: usize = max(
-            "PLAYTIME".to_string().chars().count(),
-            tracks
-                .iter()
-                .map(|t| {
-                    formatted_duration(t.play_time.unwrap_or(Duration::seconds(0)))
-                        .chars()
-                        .count()
-                })
-                .max()
-                .unwrap_or(0),
-        );
+        // rekordbox does not have any start or play time info :(
+        let max_playtime_length: usize = 0;
 
         Ok(Playlist {
             date: None,
@@ -516,17 +506,29 @@ impl Playlist {
     fn print_pretty_playlist(&self) {
         let index_width = self.tracks.len().to_string().chars().count();
 
-        let header = format!(
-            "{:<index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
-            "#",
-            "ARTIST",
-            "TITLE",
-            "PLAYTIME",
-            index_width = index_width,
-            artist_width = self.max_artist_length,
-            title_width = self.max_title_length,
-            playtime_width = self.max_playtime_length
-        );
+        let header = if self.max_playtime_length > 0 {
+            format!(
+                "{:<index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
+                "#",
+                "ARTIST",
+                "TITLE",
+                "PLAYTIME",
+                index_width = index_width,
+                artist_width = self.max_artist_length,
+                title_width = self.max_title_length,
+                playtime_width = self.max_playtime_length
+            )
+        } else {
+            format!(
+                "{:<index_width$}   {:<artist_width$}   {:<title_width$}",
+                "#",
+                "ARTIST",
+                "TITLE",
+                index_width = index_width,
+                artist_width = self.max_artist_length,
+                title_width = self.max_title_length,
+            )
+        };
 
         let header_width = header.chars().count();
         let divider = "-".repeat(header_width);
