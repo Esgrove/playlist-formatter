@@ -129,7 +129,7 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
 
     log::debug!("Formatting style: {style}");
 
-    let formatter = Playlist::new(filepath);
+    let formatter = Playlist::new(filepath)?;
 
     log::debug!("{:#?}", formatter);
 

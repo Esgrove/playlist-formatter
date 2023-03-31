@@ -113,11 +113,11 @@ impl Track {
 
 impl Playlist {
     /// Initialize playlist from given filepath
-    pub fn new(file: &Path) -> Playlist {
+    pub fn new(file: &Path) -> Result<Playlist> {
         let format = Self::playlist_format(file);
         match format {
-            FileFormat::Csv => Self::read_csv(file).unwrap(),
-            FileFormat::Txt => Self::read_txt(file).unwrap(),
+            FileFormat::Csv => Self::read_csv(file),
+            FileFormat::Txt => Self::read_txt(file),
         }
     }
 
@@ -156,7 +156,7 @@ impl Playlist {
         let required_fields = vec!["Track Title", "Artist"];
         for field in required_fields {
             if !map.contains_key(field) {
-                anyhow::bail!("TXT missing required field: {}", field)
+                anyhow::bail!("TXT missing required field: '{}'", field)
             }
         }
 
@@ -250,7 +250,7 @@ impl Playlist {
         let required_fields = vec!["name", "artist"];
         for field in required_fields {
             if !header_map.contains_key(field) {
-                anyhow::bail!("CSV missing required field: {}", field)
+                anyhow::bail!("CSV missing required field: '{}'", field)
             }
         }
 
