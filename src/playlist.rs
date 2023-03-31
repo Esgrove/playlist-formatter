@@ -1,4 +1,8 @@
-use anyhow::anyhow;
+use crate::track::Track;
+
+use crate::utils;
+use crate::utils::{FileFormat, FormattingStyle, PlaylistType};
+
 use anyhow::{Context, Result};
 use chrono::{Duration, NaiveDateTime, NaiveTime, Timelike};
 use colored::Colorize;
@@ -7,53 +11,14 @@ use encoding_rs_io::DecodeReaderBytes;
 use home::home_dir;
 use std::cmp::max;
 use std::collections::{BTreeMap, HashMap};
-use std::ffi::OsStr;
-use std::ffi::OsString;
+
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
-use std::{fmt, ops};
-use strum::EnumIter;
+
 use strum::IntoEnumIterator;
-
-/// Which DJ software is the playlist from.
-/// Each software has their own formatting style.
-#[derive(Debug, PartialEq)]
-pub enum PlaylistType {
-    Rekordbox,
-    Serato,
-}
-
-/// Playlist file type
-#[derive(Debug, PartialEq, EnumIter)]
-pub enum FileFormat {
-    Txt,
-    Csv,
-}
-
-/// Output formatting style for playlist printing
-#[derive(Default, Debug, PartialEq)]
-pub enum FormattingStyle {
-    /// Basic formatting, for example for sharing playlist text online
-    Basic,
-    /// Basic formatting but with track numbers
-    Numbered,
-    /// Pretty formatting for human readable formatted CLI output
-    #[default]
-    Pretty,
-}
-
-/// Represents one played track
-#[derive(Debug, Clone)]
-struct Track {
-    artist: String,
-    title: String,
-    start_time: Option<NaiveDateTime>,
-    end_time: Option<NaiveDateTime>,
-    play_time: Option<Duration>,
-}
 
 /// Parsed playlist data
 #[derive(Debug)]
@@ -68,49 +33,6 @@ pub(crate) struct Playlist {
     max_artist_length: usize,
     max_title_length: usize,
     max_playtime_length: usize,
-}
-
-impl Track {
-    /// Create a simple track with only artist name and song title
-    pub fn new(artist: String, title: String) -> Track {
-        Track {
-            artist,
-            title,
-            start_time: None,
-            end_time: None,
-            play_time: None,
-        }
-    }
-
-    /// Create a track with full information including start and play time.
-    pub fn new_with_time(
-        artist: String,
-        title: String,
-        start_time: Option<NaiveDateTime>,
-        end_time: Option<NaiveDateTime>,
-        play_time: Option<Duration>,
-    ) -> Track {
-        Track {
-            artist,
-            title,
-            start_time,
-            end_time,
-            play_time,
-        }
-    }
-
-    /// Get the number of characters the artist name has
-    pub fn artist_length(&self) -> usize {
-        // .len() counts bytes, not chars
-        self.artist.chars().count()
-    }
-
-    /// Get the number of characters the song title has
-    pub fn title_length(&self) -> usize {
-        self.title.chars().count()
-    }
-
-    // Support summing to increase play time
 }
 
 impl Playlist {
@@ -197,7 +119,7 @@ impl Playlist {
         // TODO: handle play times
         tracks.dedup();
 
-        let total_duration = get_total_playtime(&tracks);
+        let total_duration = utils::get_total_playtime(&tracks);
 
         // Drop file extension from file name
         let name = path
@@ -351,7 +273,7 @@ impl Playlist {
         // TODO: handle play times
         tracks.dedup();
 
-        let total_duration = get_total_playtime(&tracks);
+        let total_duration = utils::get_total_playtime(&tracks);
 
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
@@ -360,7 +282,7 @@ impl Playlist {
             tracks
                 .iter()
                 .map(|t| {
-                    formatted_duration(t.play_time.unwrap_or(Duration::seconds(0)))
+                    utils::formatted_duration(t.play_time.unwrap_or(Duration::seconds(0)))
                         .chars()
                         .count()
                 })
@@ -398,9 +320,9 @@ impl Playlist {
         );
         print!("Tracks: {}", self.tracks.len());
         if let Some(duration) = self.total_duration {
-            print!(", Total duration: {}", formatted_duration(duration));
+            print!(", Total duration: {}", utils::formatted_duration(duration));
             let average = Duration::seconds(duration.num_seconds() / self.tracks.len() as i64);
-            print!(" ({} per track)", formatted_duration(average))
+            print!(" ({} per track)", utils::formatted_duration(average))
         };
         println!("\n");
     }
@@ -454,7 +376,7 @@ impl Playlist {
             if !has_valid_file_extension {
                 // Can't use `with_extension` here since it will replace anything after the last dot,
                 // which will alter the name if it contains a date separated by dots for example.
-                append_extension_to_pathbuf(value, "csv")
+                utils::append_extension_to_pathbuf(value, "csv")
             } else {
                 value
             }
@@ -545,7 +467,7 @@ impl Playlist {
                 track.artist,
                 track.title,
                 if let Some(d) = track.play_time {
-                    formatted_duration(d).green()
+                    utils::formatted_duration(d).green()
                 } else {
                     "".normal()
                 },
@@ -647,153 +569,5 @@ impl Playlist {
             None
         };
         path.filter(|p| p.is_dir())
-    }
-}
-
-/// Get total playtime for a list of tracks
-fn get_total_playtime(tracks: &[Track]) -> Option<Duration> {
-    let mut sum = Duration::seconds(0);
-    for track in tracks.iter() {
-        if let Some(duration) = track.play_time {
-            // chrono::Duration does not implement AddAssign or sum :(
-            sum = sum + duration;
-        }
-    }
-    if sum.is_zero() {
-        None
-    } else {
-        Some(sum)
-    }
-}
-
-/// Format duration as a string either as H:MM:SS or MM:SS depending on the duration.
-fn formatted_duration(duration: Duration) -> String {
-    let hours = duration.num_hours();
-    let minutes = duration.num_minutes();
-    let seconds = duration.num_seconds();
-    if seconds > 0 {
-        if minutes >= 60 {
-            format!("{}:{:02}:{:02}", hours, minutes % 60, seconds % 60)
-        } else {
-            format!("{}:{:02}", minutes, seconds % 60)
-        }
-    } else {
-        "".to_string()
-    }
-}
-
-/// Append extension to PathBuf, which is somehow missing completely from the standard lib :(
-///
-/// https://internals.rust-lang.org/t/pathbuf-has-set-extension-but-no-add-extension-cannot-cleanly-turn-tar-to-tar-gz/14187/10
-fn append_extension_to_pathbuf(path: PathBuf, extension: impl AsRef<OsStr>) -> PathBuf {
-    let mut os_string: OsString = path.into();
-    os_string.push(".");
-    os_string.push(extension.as_ref());
-    os_string.into()
-}
-
-/// Convert string to enum
-impl FromStr for FileFormat {
-    type Err = anyhow::Error;
-    fn from_str(input: &str) -> Result<FileFormat> {
-        match input.to_lowercase().as_str() {
-            "csv" => Ok(FileFormat::Csv),
-            "txt" => Ok(FileFormat::Txt),
-            _ => Err(anyhow!("Unsupported file format: '{input}'")),
-        }
-    }
-}
-
-impl PartialEq for Track {
-    fn eq(&self, other: &Self) -> bool {
-        self.artist == other.artist && self.title == other.title
-    }
-}
-
-/// Add duration to play time
-impl ops::Add<Duration> for Track {
-    type Output = Track;
-    fn add(self, duration: Duration) -> Track {
-        Track {
-            artist: self.artist,
-            title: self.title,
-            start_time: self.start_time,
-            end_time: self.end_time,
-            play_time: if let Some(time) = self.play_time {
-                Some(time + duration)
-            } else {
-                Some(duration)
-            },
-        }
-    }
-}
-
-impl ops::Add<Option<Duration>> for Track {
-    type Output = Track;
-    fn add(self, duration: Option<Duration>) -> Track {
-        let play_time = match self.play_time {
-            Some(time) => match duration {
-                None => Some(time),
-                Some(d) => Some(time + d),
-            },
-            None => duration,
-        };
-        Track {
-            artist: self.artist,
-            title: self.title,
-            start_time: self.start_time,
-            end_time: self.end_time,
-            play_time,
-        }
-    }
-}
-
-/// Add duration to play time
-impl ops::AddAssign<Duration> for Track {
-    fn add_assign(&mut self, duration: Duration) {
-        if let Some(time) = self.play_time {
-            self.play_time = Some(time + duration)
-        } else {
-            self.play_time = Some(duration)
-        }
-    }
-}
-
-impl fmt::Display for PlaylistType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl fmt::Display for FileFormat {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                FileFormat::Txt => "txt",
-                FileFormat::Csv => "csv",
-            }
-        )
-    }
-}
-
-impl fmt::Display for FormattingStyle {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                FormattingStyle::Basic => "basic",
-                FormattingStyle::Numbered => "numbered",
-                FormattingStyle::Pretty => "pretty",
-            }
-        )
-    }
-}
-
-impl fmt::Display for Track {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} - {}", self.artist, self.title)
     }
 }

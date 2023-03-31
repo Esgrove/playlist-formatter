@@ -1,8 +1,12 @@
-mod formatter;
+mod playlist;
+mod track;
+mod utils;
+
+use crate::playlist::Playlist;
+use crate::utils::FormattingStyle;
 use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
-use formatter::{FormattingStyle, Playlist};
 use log::LevelFilter;
 use std::io::Write;
 use std::path::Path;
