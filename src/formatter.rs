@@ -658,13 +658,14 @@ fn formatted_duration(duration: Duration) -> String {
     let minutes = duration.num_minutes();
     let seconds = duration.num_seconds();
     if seconds > 0 {
-        if minutes >= 60 {
-            return format!("{}:{:02}:{:02}", hours, minutes % 60, seconds % 60);
+        return if minutes >= 60 {
+            format!("{}:{:02}:{:02}", hours, minutes % 60, seconds % 60)
         } else {
-            return format!("{}:{:02}", minutes, seconds % 60);
-        }
+            format!("{}:{:02}", minutes, seconds % 60)
+        };
+    } else {
+        "".to_string()
     }
-    "".to_string()
 }
 
 /// Append extension to PathBuf, which is somehow missing completely from the standard lib :(
