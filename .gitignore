@@ -113,3 +113,6 @@ venv/
 
 # Added by cargo
 /target
+
+# binary
+/playlist_tool
