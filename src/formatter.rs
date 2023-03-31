@@ -15,6 +15,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
 use std::{fmt, ops};
+use strum::EnumIter;
+use strum::IntoEnumIterator;
 
 /// Which DJ software is the playlist from.
 /// Each software has their own formatting style.
@@ -25,7 +27,7 @@ pub enum PlaylistType {
 }
 
 /// Playlist file type
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, EnumIter)]
 pub enum FileFormat {
     Txt,
     Csv,
@@ -114,7 +116,7 @@ impl Track {
 impl Playlist {
     /// Initialize playlist from given filepath
     pub fn new(file: &Path) -> Result<Playlist> {
-        let format = Self::playlist_format(file);
+        let format = Self::playlist_format(file)?;
         match format {
             FileFormat::Csv => Self::read_csv(file),
             FileFormat::Txt => Self::read_txt(file),
@@ -558,9 +560,21 @@ impl Playlist {
     }
 
     /// Get playlist format enum from file extension
-    fn playlist_format(file: &Path) -> FileFormat {
-        let extension = file.extension().unwrap().to_str().unwrap();
-        FileFormat::from_str(extension).unwrap()
+    fn playlist_format(file: &Path) -> Result<FileFormat> {
+        let extension: &str = match file.extension() {
+            None => {
+                anyhow::bail!(
+                    "Input file has no file extension: '{}'. Supported file types are: {}",
+                    file.display(),
+                    FileFormat::iter()
+                        .map(|f| f.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )
+            }
+            Some(ext) => ext.to_str().unwrap(),
+        };
+        FileFormat::from_str(extension)
     }
 
     /// Return default save directory for playlist output file.
@@ -658,11 +672,11 @@ fn formatted_duration(duration: Duration) -> String {
     let minutes = duration.num_minutes();
     let seconds = duration.num_seconds();
     if seconds > 0 {
-        return if minutes >= 60 {
+        if minutes >= 60 {
             format!("{}:{:02}:{:02}", hours, minutes % 60, seconds % 60)
         } else {
             format!("{}:{:02}", minutes, seconds % 60)
-        };
+        }
     } else {
         "".to_string()
     }
