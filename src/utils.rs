@@ -12,14 +12,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::String;
 
-/// Which DJ software is the playlist from.
-/// Each software has their own formatting style.
-#[derive(Debug, PartialEq)]
-pub enum PlaylistType {
-    Rekordbox,
-    Serato,
-}
-
 /// Playlist file type
 #[derive(Debug, PartialEq, EnumIter)]
 pub enum FileFormat {
@@ -39,49 +31,13 @@ pub enum FormattingStyle {
     Pretty,
 }
 
-impl fmt::Display for PlaylistType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl fmt::Display for FileFormat {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                FileFormat::Txt => "txt",
-                FileFormat::Csv => "csv",
-            }
-        )
-    }
-}
-
-impl fmt::Display for FormattingStyle {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                FormattingStyle::Basic => "basic",
-                FormattingStyle::Numbered => "numbered",
-                FormattingStyle::Pretty => "pretty",
-            }
-        )
-    }
-}
-
-/// Convert string to enum
-impl FromStr for FileFormat {
-    type Err = anyhow::Error;
-    fn from_str(input: &str) -> Result<FileFormat> {
-        match input.to_lowercase().as_str() {
-            "csv" => Ok(FileFormat::Csv),
-            "txt" => Ok(FileFormat::Txt),
-            _ => Err(anyhow!("Unsupported file format: '{input}'")),
-        }
-    }
+/// Which DJ software is the playlist from.
+///
+/// Each software has its own formatting style.
+#[derive(Debug, PartialEq)]
+pub enum PlaylistType {
+    Rekordbox,
+    Serato,
 }
 
 /// Append extension to PathBuf, which is somehow missing completely from the standard lib :(
@@ -123,5 +79,51 @@ pub fn formatted_duration(duration: Duration) -> String {
         }
     } else {
         "".to_string()
+    }
+}
+
+/// Convert string to FileFormat enum
+impl FromStr for FileFormat {
+    type Err = anyhow::Error;
+    fn from_str(input: &str) -> Result<FileFormat> {
+        match input.to_lowercase().trim() {
+            "csv" => Ok(FileFormat::Csv),
+            "txt" => Ok(FileFormat::Txt),
+            "" => Err(anyhow!("Can't convert empty string to file format")),
+            _ => Err(anyhow!("Unsupported file format: '{input}'")),
+        }
+    }
+}
+
+impl fmt::Display for PlaylistType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl fmt::Display for FileFormat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                FileFormat::Txt => "txt",
+                FileFormat::Csv => "csv",
+            }
+        )
+    }
+}
+
+impl fmt::Display for FormattingStyle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                FormattingStyle::Basic => "basic",
+                FormattingStyle::Numbered => "numbered",
+                FormattingStyle::Pretty => "pretty",
+            }
+        )
     }
 }

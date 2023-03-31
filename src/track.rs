@@ -1,4 +1,5 @@
 use chrono::{Duration, NaiveDateTime};
+
 use std::string::String;
 use std::{fmt, ops};
 
@@ -55,12 +56,6 @@ impl Track {
     // Support summing to increase play time
 }
 
-impl fmt::Display for Track {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} - {}", self.artist, self.title)
-    }
-}
-
 impl ops::Add<Option<Duration>> for Track {
     type Output = Track;
     fn add(self, duration: Option<Duration>) -> Track {
@@ -81,7 +76,6 @@ impl ops::Add<Option<Duration>> for Track {
     }
 }
 
-/// Add duration to play time
 impl ops::AddAssign<Duration> for Track {
     fn add_assign(&mut self, duration: Duration) {
         if let Some(time) = self.play_time {
@@ -92,7 +86,6 @@ impl ops::AddAssign<Duration> for Track {
     }
 }
 
-/// Add duration to play time
 impl ops::Add<Duration> for Track {
     type Output = Track;
     fn add(self, duration: Duration) -> Track {
@@ -113,5 +106,11 @@ impl ops::Add<Duration> for Track {
 impl PartialEq for Track {
     fn eq(&self, other: &Self) -> bool {
         self.artist == other.artist && self.title == other.title
+    }
+}
+
+impl fmt::Display for Track {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} - {}", self.artist, self.title)
     }
 }

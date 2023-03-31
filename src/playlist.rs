@@ -1,5 +1,4 @@
 use crate::track::Track;
-
 use crate::utils;
 use crate::utils::{FileFormat, FormattingStyle, PlaylistType};
 
@@ -9,18 +8,17 @@ use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use home::home_dir;
+use strum::IntoEnumIterator;
+
 use std::cmp::max;
 use std::collections::{BTreeMap, HashMap};
-
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
 
-use strum::IntoEnumIterator;
-
-/// Parsed playlist data
+/// Holds imported playlist data
 #[derive(Debug)]
 pub(crate) struct Playlist {
     pub date: Option<NaiveDateTime>,
@@ -74,7 +72,6 @@ impl Playlist {
                 .map(|(index, value)| (value.to_string(), index))
                 .collect()
         };
-
         log::debug!("txt headers ({}): {:?}", map.keys().len(), map.keys());
 
         let required_fields = vec!["Track Title", "Artist"];

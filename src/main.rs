@@ -4,13 +4,16 @@ mod utils;
 
 use crate::playlist::Playlist;
 use crate::utils::FormattingStyle;
+
 use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
 use log::LevelFilter;
+
 use std::io::Write;
 use std::path::Path;
 
+/// Logging level
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum Level {
     Debug,
@@ -77,8 +80,54 @@ struct Args {
     save: Option<Option<String>>,
 }
 
+/// Run playlist formatting based on command line arguments
+fn run_playlist_formatter_cli(args: Args) -> Result<()> {
+    let input_file = args.file.trim();
+    if input_file.is_empty() {
+        anyhow::bail!("empty input file");
+    }
+    let filepath = Path::new(input_file);
+    if !filepath.is_file() {
+        anyhow::bail!(
+            "file does not exist or is not accessible: '{}'",
+            filepath.display()
+        );
+    }
+    log::debug!("Playlist file: {}", filepath.display());
+
+    // formatting style to use
+    let style = if args.basic {
+        FormattingStyle::Basic
+    } else if args.numbered {
+        FormattingStyle::Numbered
+    } else {
+        FormattingStyle::Pretty
+    };
+    log::debug!("Formatting style: {style}");
+
+    let formatter = Playlist::new(filepath)?;
+    log::debug!("{:#?}", formatter);
+
+    if style == FormattingStyle::Pretty {
+        formatter.print_info();
+    }
+
+    formatter.print_playlist(style);
+
+    if let Some(save_arg) = args.save {
+        formatter.save_playlist_to_file(save_arg, args.force)?;
+    } else if args.output.is_some() {
+        formatter.save_playlist_to_file(args.output, args.force)?;
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
+    // parse command line arguments
     let args = Args::parse();
+
+    // get logging level to use
     let log_level_filter = match args.log {
         None => LevelFilter::Info,
         Some(ref level) => match level {
@@ -106,50 +155,4 @@ fn main() -> Result<()> {
     log::debug!("Using log level: {:?}", log_level_filter);
 
     run_playlist_formatter_cli(args)
-}
-
-fn run_playlist_formatter_cli(args: Args) -> Result<()> {
-    let input_file = args.file.trim();
-    if input_file.is_empty() {
-        anyhow::bail!("empty input file");
-    }
-    let filepath = Path::new(input_file);
-    if !filepath.is_file() {
-        anyhow::bail!(
-            "file does not exist or is not accessible: '{}'",
-            filepath.display()
-        );
-    }
-
-    log::debug!("Playlist file: {}", filepath.display());
-
-    let style = if args.basic {
-        FormattingStyle::Basic
-    } else if args.numbered {
-        FormattingStyle::Numbered
-    } else {
-        FormattingStyle::Pretty
-    };
-
-    log::debug!("Formatting style: {style}");
-
-    let formatter = Playlist::new(filepath)?;
-
-    log::debug!("{:#?}", formatter);
-
-    if style == FormattingStyle::Pretty {
-        formatter.print_info();
-    }
-
-    formatter.print_playlist(style);
-
-    if let Some(save_arg) = args.save {
-        log::debug!("Saving playlist to file");
-        formatter.save_playlist_to_file(save_arg, args.force)?;
-    } else if args.output.is_some() {
-        log::debug!("Outputting to file");
-        formatter.save_playlist_to_file(args.output, args.force)?;
-    }
-
-    Ok(())
 }
