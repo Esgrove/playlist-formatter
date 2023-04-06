@@ -1,4 +1,4 @@
-#![warn(clippy::restriction, clippy::pedantic, clippy::cargo)]
+#![warn(clippy::cargo)]
 
 mod playlist;
 mod track;
@@ -28,7 +28,7 @@ enum Level {
 ///
 /// Basic info is read from `Cargo.toml`
 /// See Clap `Derive` documentation for details:
-/// https://docs.rs/clap/latest/clap/_derive/index.html
+/// <https://docs.rs/clap/latest/clap/_derive/index.html>
 #[derive(Parser)]
 #[command(
     author,
@@ -114,7 +114,7 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
         formatter.print_info();
     }
 
-    formatter.print_playlist(style);
+    formatter.print_playlist(&style);
 
     if let Some(save_arg) = args.save {
         formatter.save_playlist_to_file(save_arg, args.force)?;

@@ -52,8 +52,6 @@ impl Track {
     pub fn title_length(&self) -> usize {
         self.title.chars().count()
     }
-
-    // Support summing to increase play time
 }
 
 impl ops::Add<Option<Duration>> for Track {

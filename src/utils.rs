@@ -40,9 +40,9 @@ pub enum PlaylistType {
     Serato,
 }
 
-/// Append extension to PathBuf, which is somehow missing completely from the standard lib :(
+/// Append extension to `PathBuf`, which is somehow missing completely from the standard lib :(
 ///
-/// https://internals.rust-lang.org/t/pathbuf-has-set-extension-but-no-add-extension-cannot-cleanly-turn-tar-to-tar-gz/14187/10
+/// <https://internals.rust-lang.org/t/pathbuf-has-set-extension-but-no-add-extension-cannot-cleanly-turn-tar-to-tar-gz/14187/10>
 pub fn append_extension_to_pathbuf(path: PathBuf, extension: impl AsRef<OsStr>) -> PathBuf {
     let mut os_string: OsString = path.into();
     os_string.push(".");
@@ -78,11 +78,11 @@ pub fn formatted_duration(duration: Duration) -> String {
             format!("{}:{:02}", minutes, seconds % 60)
         }
     } else {
-        "".to_string()
+        String::new()
     }
 }
 
-/// Convert string to FileFormat enum
+/// Convert string to `FileFormat` enum
 impl FromStr for FileFormat {
     type Err = anyhow::Error;
     fn from_str(input: &str) -> Result<FileFormat> {
@@ -97,7 +97,7 @@ impl FromStr for FileFormat {
 
 impl fmt::Display for PlaylistType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
