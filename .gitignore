@@ -110,6 +110,7 @@ venv/
 # other
 *.csv
 *.txt
+*.exe
 
 # Added by cargo
 /target

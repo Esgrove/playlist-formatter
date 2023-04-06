@@ -8,9 +8,30 @@ if [ -z "$(command -v cargo)" ]; then
     exit 1
 fi
 
+# Check platform
+case "$(uname -s)" in
+    "Darwin")
+        PLATFORM="mac"
+        ;;
+    "MINGW"*)
+        PLATFORM="windows"
+        ;;
+    *)
+        PLATFORM="linux"
+        ;;
+esac
+
 pushd "$REPO_ROOT" > /dev/null
 cargo build --release
-mv ./target/release/playlist_tool .
-./playlist_tool --version
-./playlist_tool -h
+
+if [ "$PLATFORM" = windows ]; then
+    executable="playlist_tool.exe"
+else
+    executable="playlist_tool"
+fi
+
+rm -f "$executable"
+mv ./target/release/"$executable" "$executable"
+./"$executable" --version
+./"$executable" -h
 popd > /dev/null
