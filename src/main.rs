@@ -1,3 +1,5 @@
+#![warn(clippy::restriction, clippy::pedantic, clippy::cargo)]
+
 mod playlist;
 mod track;
 mod utils;

@@ -53,10 +53,59 @@ impl Playlist {
         decoder.read_to_string(&mut dest)?;
 
         // Split string to lines, and each line to separate items
-        let lines: Vec<Vec<String>> = dest
-            .lines()
-            .map(|s| s.split('\t').map(|l| l.trim().to_string()).collect())
-            .collect();
+        let lines: Vec<Vec<String>> = {
+            let initial_lines: Vec<Vec<String>> = dest
+                .lines()
+                .map(|s| s.split('\t').map(|l| l.trim().to_string()).collect())
+                .collect();
+
+            // Serato txt has a divider on the second line
+            if initial_lines[1][0].chars().all(|c| c == '-') {
+                // This is a Serato txt, need to do some extra parsing here...
+                let header_line: String = initial_lines[0][0].clone();
+                let header_fields: Vec<String> = header_line
+                    .replace("     ", "\t")
+                    .split('\t')
+                    .filter_map(|s| {
+                        let v = s.trim();
+                        if s.is_empty() {
+                            None
+                        } else {
+                            Some(v.to_string())
+                        }
+                    })
+                    .collect();
+                let mut field_indices: Vec<usize> = header_fields
+                    .iter()
+                    .map(|field| header_line.find(field).unwrap())
+                    .collect();
+                field_indices.reverse();
+                let mut serato_lines: Vec<Vec<String>> = vec![];
+                for line in initial_lines {
+                    if line[0].chars().all(|c| c == '-') {
+                        continue;
+                    }
+                    let mut split_line: Vec<String> = vec![];
+                    let mut remainder: String = line[0].to_string();
+                    for index in &field_indices {
+                        if *index >= remainder.len() {
+                            continue;
+                        }
+                        let (string_left, value) = remainder.split_at(*index);
+                        split_line.push(value.trim().to_string());
+                        remainder = string_left.to_string();
+                    }
+                    split_line.reverse();
+                    while split_line.len() < header_fields.len() {
+                        split_line.push("".to_string());
+                    }
+                    serato_lines.push(split_line);
+                }
+                serato_lines
+            } else {
+                initial_lines
+            }
+        };
 
         log::debug!("Lines ({}):", lines.len());
         log::debug!("{:#?}", lines);
@@ -114,7 +163,9 @@ impl Playlist {
             log::debug!("Detected Rekordbox TXT");
             Playlist::read_rekordbox_txt(path, name, header_map, data)
         } else {
-            anyhow::bail!("Input file does not seem to be a valid Serato or Rekordbox txt");
+            anyhow::bail!(
+                "Input file does not seem to be a valid Serato or Rekordbox txt playlist"
+            );
         }
     }
 
@@ -168,88 +219,18 @@ impl Playlist {
             log::debug!("{:?}", row);
         }
 
-        // first row in Serato CSV is an info row with the playlist name and timestamp
-        let playlist_name = &data[0].get("name").unwrap().to_string();
-        // timestamp, for example "10.01.2019, 20.00.00 EET"
-        let playlist_date = NaiveDateTime::parse_from_str(
-            data[0].get("start time").unwrap(),
-            "%d.%m.%Y, %H.%M.%S %Z",
-        )
-        .unwrap();
-
-        // parse tracks
-        let initial_tracks: Vec<Track> = {
-            data[1..]
-                .iter()
-                .map(|row| {
-                    let start_time: Option<NaiveDateTime> = {
-                        match row.get("start time") {
-                            None => None,
-                            Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
-                                Ok(n) => Some(NaiveDateTime::new(playlist_date.date(), n)),
-                                Err(_) => None,
-                            },
-                        }
-                    };
-                    let end_time: Option<NaiveDateTime> = {
-                        match row.get("end time") {
-                            None => None,
-                            Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
-                                Ok(n) => Some(NaiveDateTime::new(playlist_date.date(), n)),
-                                Err(_) => None,
-                            },
-                        }
-                    };
-                    let play_time: Option<Duration> = {
-                        match row.get("playtime") {
-                            None => None,
-                            Some(t) => match NaiveTime::parse_from_str(t, "%H:%M:%S") {
-                                Ok(n) => Some(
-                                    Duration::hours(n.hour() as i64)
-                                        + Duration::minutes(n.minute() as i64)
-                                        + Duration::seconds(n.second() as i64),
-                                ),
-                                Err(_) => None,
-                            },
-                        }
-                    };
-                    Track::new_with_time(
-                        row.get("artist").unwrap().to_string(),
-                        row.get("name").unwrap().to_string(),
-                        start_time,
-                        end_time,
-                        play_time,
-                    )
-                })
-                .collect()
-        };
-
-        // Remove consecutive duplicates
-        let mut new_tracks_index: usize = 0;
-        let mut tracks: Vec<Track> = vec![initial_tracks[0].clone()];
-        for track in initial_tracks[1..].iter() {
-            let previous_track = &tracks[new_tracks_index];
-            if *previous_track == *track {
-                // duplicate track -> add playtime to previous and skip
-                tracks[new_tracks_index] = previous_track.clone() + track.play_time
-            } else {
-                // new track, append to playlist
-                tracks.push(track.clone());
-                new_tracks_index += 1;
-            }
-        }
-
+        let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
+        let tracks = Self::get_serato_tracks_from_data(&data, playlist_date);
         let total_duration = utils::get_total_playtime(&tracks);
-
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
         let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
 
         Ok(Playlist {
-            date: Some(playlist_date),
+            date: playlist_date,
             file: PathBuf::from(path),
             file_format: FileFormat::Csv,
-            name: playlist_name.clone(),
+            name: playlist_name,
             playlist_type: PlaylistType::Serato,
             tracks,
             max_artist_length,
@@ -257,6 +238,22 @@ impl Playlist {
             max_playtime_length,
             total_duration,
         })
+    }
+
+    fn parse_serato_playlist_info(
+        data: &BTreeMap<String, String>,
+    ) -> (String, Option<NaiveDateTime>) {
+        // first row in Serato CSV is an info row with the playlist name and timestamp
+        let playlist_name = match data.get("name") {
+            None => "".to_string(),
+            Some(n) => n.to_string(),
+        };
+        // timestamp, for example "10.01.2019, 20.00.00 EET"
+        let playlist_date = match data.get("start time") {
+            None => None,
+            Some(time) => NaiveDateTime::parse_from_str(time, "%d.%m.%Y, %H.%M.%S %Z").ok(),
+        };
+        (playlist_name, playlist_date)
     }
 
     /// Print playlist information (but not the tracks themselves)
@@ -277,7 +274,7 @@ impl Playlist {
         if let Some(duration) = self.total_duration {
             print!(", Total duration: {}", utils::formatted_duration(duration));
             let average = Duration::seconds(duration.num_seconds() / self.tracks.len() as i64);
-            print!(" ({} per track)", utils::formatted_duration(average))
+            print!(" (avg. {} per track)", utils::formatted_duration(average))
         };
         println!("\n");
     }
@@ -373,29 +370,23 @@ impl Playlist {
                 anyhow::bail!("Serato TXT missing required field: '{}'", field)
             }
         }
-        let tracks: Vec<Track> = {
-            data.iter()
-                // TODO: filter_map to skip divider lines
-                .map(|row| {
-                    Track::new(
-                        row.get(required_fields[0]).unwrap().to_string(),
-                        row.get(required_fields[1]).unwrap().to_string(),
-                    )
-                })
-                .collect()
-        };
 
+        let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
+        let tracks = Self::get_serato_tracks_from_data(&data, playlist_date);
         let total_duration = utils::get_total_playtime(&tracks);
-
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
         let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
 
         Ok(Playlist {
-            date: None,
+            date: playlist_date,
             file: PathBuf::from(path),
             file_format: FileFormat::Txt,
-            name,
+            name: if !playlist_name.is_empty() {
+                playlist_name
+            } else {
+                name
+            },
             playlist_type: PlaylistType::Serato,
             tracks,
             max_artist_length,
@@ -638,5 +629,74 @@ impl Playlist {
             })
             .max()
             .unwrap_or(0)
+    }
+
+    /// Parse Serato track data
+    fn get_serato_tracks_from_data(
+        data: &[BTreeMap<String, String>],
+        playlist_date: Option<NaiveDateTime>,
+    ) -> Vec<Track> {
+        let date = playlist_date.unwrap_or_default().date();
+        let initial_tracks: Vec<Track> = {
+            data[1..]
+                .iter()
+                .map(|row| {
+                    let start_time: Option<NaiveDateTime> = {
+                        match row.get("start time") {
+                            None => None,
+                            Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
+                                Ok(n) => Some(NaiveDateTime::new(date, n)),
+                                Err(_) => None,
+                            },
+                        }
+                    };
+                    let end_time: Option<NaiveDateTime> = {
+                        match row.get("end time") {
+                            None => None,
+                            Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
+                                Ok(n) => Some(NaiveDateTime::new(date, n)),
+                                Err(_) => None,
+                            },
+                        }
+                    };
+                    let play_time: Option<Duration> = {
+                        match row.get("playtime") {
+                            None => None,
+                            Some(t) => match NaiveTime::parse_from_str(t, "%H:%M:%S") {
+                                Ok(n) => Some(
+                                    Duration::hours(n.hour() as i64)
+                                        + Duration::minutes(n.minute() as i64)
+                                        + Duration::seconds(n.second() as i64),
+                                ),
+                                Err(_) => None,
+                            },
+                        }
+                    };
+                    Track::new_with_time(
+                        row.get("artist").unwrap().to_string(),
+                        row.get("name").unwrap().to_string(),
+                        start_time,
+                        end_time,
+                        play_time,
+                    )
+                })
+                .collect()
+        };
+
+        // Remove consecutive duplicates
+        let mut new_tracks_index: usize = 0;
+        let mut tracks: Vec<Track> = vec![initial_tracks[0].clone()];
+        for track in initial_tracks[1..].iter() {
+            let previous_track = &tracks[new_tracks_index];
+            if *previous_track == *track {
+                // duplicate track -> add playtime to previous and skip
+                tracks[new_tracks_index] = previous_track.clone() + track.play_time
+            } else {
+                // new track, append to playlist
+                tracks.push(track.clone());
+                new_tracks_index += 1;
+            }
+        }
+        tracks
     }
 }
