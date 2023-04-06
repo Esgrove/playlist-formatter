@@ -11,7 +11,7 @@ use home::home_dir;
 use strum::IntoEnumIterator;
 
 use std::cmp::max;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -61,10 +61,9 @@ impl Playlist {
         log::debug!("Lines ({}):", lines.len());
         log::debug!("{:#?}", lines);
 
-        // Rekordbox txt: first line contains headers.
         // Map each header name to the column index they correspond to in the data, for example:
         // {"#": 0, "Artist": 1, "Track Title": 2}
-        let map: HashMap<String, usize> = {
+        let header_map: BTreeMap<String, usize> = {
             let headers = &lines[0];
             headers
                 .iter()
@@ -72,14 +71,11 @@ impl Playlist {
                 .map(|(index, value)| (value.to_string(), index))
                 .collect()
         };
-        log::debug!("txt headers ({}): {:?}", map.keys().len(), map.keys());
-
-        let required_fields = vec!["Track Title", "Artist"];
-        for field in required_fields {
-            if !map.contains_key(field) {
-                anyhow::bail!("TXT missing required field: '{}'", field)
-            }
-        }
+        log::debug!(
+            "txt headers ({}): {:?}",
+            header_map.keys().len(),
+            header_map.keys()
+        );
 
         // Map track data to a dictionary
         let data: Vec<BTreeMap<String, String>> = {
@@ -87,7 +83,7 @@ impl Playlist {
                 .iter()
                 .map(|line| {
                     let mut items: BTreeMap<String, String> = BTreeMap::new();
-                    for (name, index) in &map {
+                    for (name, index) in &header_map {
                         let value = &line[*index];
                         items.insert(name.to_string(), value.to_string());
                     }
@@ -101,22 +97,6 @@ impl Playlist {
             log::debug!("{:#?}", row);
         }
 
-        let mut tracks: Vec<Track> = {
-            data.iter()
-                .map(|row| {
-                    Track::new(
-                        row.get("Artist").unwrap().to_string(),
-                        row.get("Track Title").unwrap().to_string(),
-                    )
-                })
-                .collect()
-        };
-
-        // Remove consecutive duplicates
-        tracks.dedup();
-
-        let total_duration = utils::get_total_playtime(&tracks);
-
         // Drop file extension from file name
         let name = path
             .with_extension("")
@@ -126,23 +106,16 @@ impl Playlist {
             .unwrap()
             .to_string();
 
-        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-        // rekordbox does not have any start or play time info :(
-        let max_playtime_length: usize = 0;
-
-        Ok(Playlist {
-            date: None,
-            file: PathBuf::from(path),
-            file_format: FileFormat::Txt,
-            name,
-            playlist_type: PlaylistType::Rekordbox,
-            tracks,
-            max_artist_length,
-            max_title_length,
-            max_playtime_length,
-            total_duration,
-        })
+        if header_map.contains_key("name") {
+            log::debug!("Detected Serato TXT");
+            Playlist::read_serato_txt(path, name, header_map, data)
+        } else if header_map.contains_key("#") {
+            // Rekordbox txt: first line contains headers, line starts with '#'.
+            log::debug!("Detected Rekordbox TXT");
+            Playlist::read_rekordbox_txt(path, name, header_map, data)
+        } else {
+            anyhow::bail!("Input file does not seem to be a valid Serato or Rekordbox txt");
+        }
     }
 
     /// Read a .csv playlist file
@@ -270,18 +243,7 @@ impl Playlist {
 
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-        let max_playtime_length: usize = max(
-            "PLAYTIME".to_string().chars().count(),
-            tracks
-                .iter()
-                .map(|t| {
-                    utils::formatted_duration(t.play_time.unwrap_or(Duration::seconds(0)))
-                        .chars()
-                        .count()
-                })
-                .max()
-                .unwrap_or(0),
-        );
+        let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
 
         Ok(Playlist {
             date: Some(playlist_date),
@@ -399,6 +361,98 @@ impl Playlist {
         self.write_playlist_file(path.as_path())
     }
 
+    fn read_serato_txt(
+        path: &Path,
+        name: String,
+        header: BTreeMap<String, usize>,
+        data: Vec<BTreeMap<String, String>>,
+    ) -> Result<Playlist> {
+        let required_fields = ["artist", "name"];
+        for field in required_fields {
+            if !header.contains_key(field) {
+                anyhow::bail!("Serato TXT missing required field: '{}'", field)
+            }
+        }
+        let tracks: Vec<Track> = {
+            data.iter()
+                // TODO: filter_map to skip divider lines
+                .map(|row| {
+                    Track::new(
+                        row.get(required_fields[0]).unwrap().to_string(),
+                        row.get(required_fields[1]).unwrap().to_string(),
+                    )
+                })
+                .collect()
+        };
+
+        let total_duration = utils::get_total_playtime(&tracks);
+
+        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
+        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+        let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
+
+        Ok(Playlist {
+            date: None,
+            file: PathBuf::from(path),
+            file_format: FileFormat::Txt,
+            name,
+            playlist_type: PlaylistType::Serato,
+            tracks,
+            max_artist_length,
+            max_title_length,
+            max_playtime_length,
+            total_duration,
+        })
+    }
+
+    fn read_rekordbox_txt(
+        path: &Path,
+        name: String,
+        header: BTreeMap<String, usize>,
+        data: Vec<BTreeMap<String, String>>,
+    ) -> Result<Playlist> {
+        let required_fields = ["Artist", "Track Title"];
+        for field in required_fields {
+            if !header.contains_key(field) {
+                anyhow::bail!("Rekordbox TXT missing required field: '{}'", field)
+            }
+        }
+
+        let mut tracks: Vec<Track> = {
+            data.iter()
+                .map(|row| {
+                    Track::new(
+                        row.get(required_fields[0]).unwrap().to_string(),
+                        row.get(required_fields[1]).unwrap().to_string(),
+                    )
+                })
+                .collect()
+        };
+
+        // Remove consecutive duplicates
+        tracks.dedup();
+
+        let total_duration = utils::get_total_playtime(&tracks);
+
+        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
+        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+        // rekordbox does not have any start or play time info :(
+        let max_playtime_length: usize = 0;
+
+        Ok(Playlist {
+            date: None,
+            file: PathBuf::from(path),
+            file_format: FileFormat::Txt,
+            name,
+            playlist_type: PlaylistType::Rekordbox,
+            tracks,
+            max_artist_length,
+            max_title_length,
+            max_playtime_length,
+            total_duration,
+        })
+    }
+
     /// Print a simple playlist without any formatting
     fn print_simple_playlist(&self) {
         for track in self.tracks.iter() {
@@ -433,7 +487,10 @@ impl Playlist {
                 index_width = index_width,
                 artist_width = self.max_artist_length,
                 title_width = self.max_title_length,
-                playtime_width = self.max_playtime_length
+                playtime_width = max(
+                    self.max_playtime_length,
+                    "PLAYTIME".to_string().chars().count()
+                )
             )
         } else {
             format!(
@@ -467,7 +524,14 @@ impl Playlist {
                 index_width = index_width,
                 artist_width = self.max_artist_length,
                 title_width = self.max_title_length,
-                playtime_width = self.max_playtime_length
+                playtime_width = if self.max_playtime_length > 0 {
+                    max(
+                        self.max_playtime_length,
+                        "PLAYTIME".to_string().chars().count(),
+                    )
+                } else {
+                    0
+                }
             );
         }
 
@@ -562,5 +626,17 @@ impl Playlist {
             None
         };
         path.filter(|p| p.is_dir())
+    }
+
+    fn get_max_playtime_length(tracks: &[Track]) -> usize {
+        tracks
+            .iter()
+            .map(|t| {
+                utils::formatted_duration(t.play_time.unwrap_or(Duration::seconds(0)))
+                    .chars()
+                    .count()
+            })
+            .max()
+            .unwrap_or(0)
     }
 }
