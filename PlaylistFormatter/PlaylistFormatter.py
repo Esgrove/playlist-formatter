@@ -63,11 +63,11 @@ class PlaylistFormatter:
         self.filepath: str = ""
         self.filetype: str = ""
         self.playlist: list[Track] = []
-        self.playlist_date: datetime = None
+        self.playlist_date: datetime | None = None
         self.playlist_file = None
         self.playlist_name: str = ""
         self.playlist_type: PlaylistType | None = None
-        self.playlist_format: PlaylistFormat = None
+        self.playlist_format: PlaylistFormat | None = None
 
         if filepath:
             self.read_playlist(filepath)
