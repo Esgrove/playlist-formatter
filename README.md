@@ -1,29 +1,29 @@
 # Playlist Tool
 
-Python program for auto-formatting DJ playlists exported from DJ software.
+Helper tool for auto-formatting DJ playlists exported from DJ software.
 Originally created for my own and fellow Bassoradio DJs use back when I was doing a radio show at Bassoradio.
-Has both a PyQt6 GUI and CLI version.
+The original version was done with Python and has both a PyQt6 GUI and CLI version.
 
-Used to process a raw playlist file exported from DJ softwares:
+Used to process a raw playlist file exported from a DJ software:
 text is formatted and title cased properly and play times are calculated from timestamps,
 and then exported back to a file.
 The formatted playlist will work well for example with Mixcloud.
 
-Currently supports:
+Since then, I have added a new Rust implementation. See below for the details.
+
+## Python version
+
+Python version supports:
 
 - csv playlists exported from Serato DJ Pro
 - txt playlists exported from Rekordbox
 
-~~Also has the option to autofill the imported playlist to Bassoradio's database,
-which saves me a lot of time and manual work when I don't have to input every song manually through the not so great web interface.
-Implemented in a somewhat hacky way with _Selenium_, as I could not get it working directly with HTTP posts using the _requests_ package.~~
-
-## Dependencies
+### Dependencies
 
 - Python 3.11+ recommended (due to use of `Self` type hinting), but 3.9+ possible with [typing_extensions](https://github.com/python/typing_extensions)
 - [requirements.txt](./requirements.txt)
 
-## Looks like
+### Looks like
 
 ![alt text](https://github.com/Esgrove/playlistTool/blob/master/playlist_gui.png)
 
@@ -31,9 +31,28 @@ Implemented in a somewhat hacky way with _Selenium_, as I could not get it worki
 
 ## Rust version
 
-Under development. CLI to begin with.
+New Rust CLI version supports:
+
+- csv and txt playlists exported from Serato DJ Pro
+- txt playlists exported from Rekordbox
+
+> **Note**: Uses Finnish time and date formatting, so might not work fully in case timestamps are in a different format
+
+### Dependencies
+
+- [clap](https://github.com/clap-rs/clap) for CLI arguments
+- [chrono](https://github.com/chronotope/chrono) for date and time handling
+- [anyhow](https://github.com/dtolnay/anyhow) for nice error handling and messages
 
 ### Build
+
+Using helper script, which will move the release executable to the repo root:
+
+```shell
+./build.sh
+```
+
+Manually:
 
 ```shell
 # debug

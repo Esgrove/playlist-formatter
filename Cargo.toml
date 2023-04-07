@@ -1,3 +1,5 @@
+# https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [package]
 authors = ["Akseli Lukkarila <esgrove@outlook.com>"]
 description = "DJ playlist formatting utility"
@@ -6,11 +8,9 @@ license = "MIT"
 name = "playlist_formatter"
 readme = "README.md"
 repository = "https://github.com/Esgrove/playlist_tool"
-version = "0.9.0"
+version = "1.0.0"
 categories = ["Command line utilities", "Parsing tools"]
 keywords = ["DJ", "playlist", "serato", "rekordbox"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1.0.69"
