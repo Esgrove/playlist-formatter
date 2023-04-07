@@ -47,7 +47,8 @@ impl Playlist {
     fn read_txt(path: &Path) -> Result<Playlist> {
         let file = File::open(path)?;
         // Rekordbox encodes txt files in UTF-16 :(
-        // This implementation is far from ideal since it reads everything into a single string
+        // This implementation is far from ideal since it reads everything into a single string,
+        // but this way can easily convert to utf-8 using encoding_rs_io
         let mut decoder = DecodeReaderBytes::new(file);
         let mut dest = String::new();
         decoder.read_to_string(&mut dest)?;
@@ -72,15 +73,16 @@ impl Playlist {
             header_map.keys()
         );
 
-        // Map track data to a dictionary
+        // Map track data to a dictionary (header key: track value)
         let data: Vec<BTreeMap<String, String>> = {
             lines[1..]
                 .iter()
                 .map(|line| {
                     let mut items: BTreeMap<String, String> = BTreeMap::new();
-                    for (name, index) in &header_map {
+                    // header map contains the index of the value corresponding to the key
+                    for (key, index) in &header_map {
                         let value = &line[*index];
-                        items.insert(name.to_string(), value.to_string());
+                        items.insert(key.to_string(), value.to_string());
                     }
                     items
                 })
@@ -101,6 +103,7 @@ impl Playlist {
             .unwrap()
             .to_string();
 
+        // Check playlist type
         if header_map.contains_key("name") {
             log::debug!("Detected Serato TXT");
             Playlist::read_serato_txt(path, name, &header_map, &data)
@@ -137,6 +140,7 @@ impl Playlist {
             header_map.keys()
         );
 
+        // Only Serato exports .csv files so we know this should be a Serato playlist
         let required_fields = vec!["name", "artist"];
         for field in required_fields {
             if !header_map.contains_key(field) {
@@ -144,7 +148,7 @@ impl Playlist {
             }
         }
 
-        // Map track data to a dictionary (header key: value)
+        // Map track data to a dictionary (header key: track value)
         let data: Vec<BTreeMap<String, String>> = {
             reader
                 .records()
@@ -184,22 +188,6 @@ impl Playlist {
             max_playtime_length,
             total_duration,
         })
-    }
-
-    fn parse_serato_playlist_info(
-        data: &BTreeMap<String, String>,
-    ) -> (String, Option<NaiveDateTime>) {
-        // first row in Serato CSV is an info row with the playlist name and timestamp
-        let playlist_name = match data.get("name") {
-            None => String::new(),
-            Some(n) => n.to_string(),
-        };
-        // timestamp, for example "10.01.2019, 20.00.00 EET"
-        let playlist_date = match data.get("start time") {
-            None => None,
-            Some(time) => NaiveDateTime::parse_from_str(time, "%d.%m.%Y, %H.%M.%S %Z").ok(),
-        };
-        (playlist_name, playlist_date)
     }
 
     /// Print playlist information (but not the tracks themselves)
@@ -303,6 +291,25 @@ impl Playlist {
         self.write_playlist_file(path.as_path())
     }
 
+    /// Parse first row data from a Serato playlist.
+    ///
+    /// This row should contain the playlist name and start datetime.
+    fn parse_serato_playlist_info(
+        data: &BTreeMap<String, String>,
+    ) -> (String, Option<NaiveDateTime>) {
+        let playlist_name = match data.get("name") {
+            None => String::new(),
+            Some(n) => n.to_string(),
+        };
+        // timestamp, for example "10.01.2019, 20.00.00 EET"
+        let playlist_date = match data.get("start time") {
+            None => None,
+            Some(time) => NaiveDateTime::parse_from_str(time, "%d.%m.%Y, %H.%M.%S %Z").ok(),
+        };
+        (playlist_name, playlist_date)
+    }
+
+    /// Read data from a Serato txt playlist.
     fn read_serato_txt(
         path: &Path,
         name: String,
@@ -317,6 +324,11 @@ impl Playlist {
         }
 
         let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
+        let name = if playlist_name.is_empty() {
+            name
+        } else {
+            playlist_name
+        };
         let tracks = Self::parse_serato_tracks_from_data(data, playlist_date);
         let total_duration = utils::get_total_playtime(&tracks);
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
@@ -327,11 +339,7 @@ impl Playlist {
             date: playlist_date,
             file: PathBuf::from(path),
             file_format: FileFormat::Txt,
-            name: if playlist_name.is_empty() {
-                name
-            } else {
-                playlist_name
-            },
+            name,
             playlist_type: PlaylistType::Serato,
             tracks,
             max_artist_length,
@@ -341,6 +349,7 @@ impl Playlist {
         })
     }
 
+    /// Read data from a Rekordbox txt playlist.
     fn read_rekordbox_txt(
         path: &Path,
         name: String,
@@ -354,6 +363,7 @@ impl Playlist {
             }
         }
 
+        // rekordbox does not have any start or play time info :(
         let mut tracks: Vec<Track> = {
             data.iter()
                 .map(|row| {
@@ -368,12 +378,8 @@ impl Playlist {
         // Remove consecutive duplicates
         tracks.dedup();
 
-        let total_duration = utils::get_total_playtime(&tracks);
-
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-        // rekordbox does not have any start or play time info :(
-        let max_playtime_length: usize = 0;
 
         Ok(Playlist {
             date: None,
@@ -384,8 +390,8 @@ impl Playlist {
             tracks,
             max_artist_length,
             max_title_length,
-            max_playtime_length,
-            total_duration,
+            max_playtime_length: 0,
+            total_duration: None,
         })
     }
 
@@ -412,6 +418,14 @@ impl Playlist {
     /// Print a nicely formatted playlist
     fn print_pretty_playlist(&self) {
         let index_width = self.tracks.len().to_string().chars().count();
+        let playtime_width = if self.max_playtime_length > 0 {
+            max(
+                self.max_playtime_length,
+                "PLAYTIME".to_string().chars().count(),
+            )
+        } else {
+            0
+        };
 
         let header = if self.max_playtime_length > 0 {
             format!(
@@ -423,10 +437,7 @@ impl Playlist {
                 index_width = index_width,
                 artist_width = self.max_artist_length,
                 title_width = self.max_title_length,
-                playtime_width = max(
-                    self.max_playtime_length,
-                    "PLAYTIME".to_string().chars().count()
-                )
+                playtime_width = playtime_width
             )
         } else {
             format!(
@@ -447,49 +458,25 @@ impl Playlist {
         println!("{divider}");
 
         for (index, track) in self.tracks.iter().enumerate() {
+            let playtime = if let Some(d) = track.play_time {
+                utils::formatted_duration(d).green()
+            } else {
+                "".normal()
+            };
             println!(
                 "{:>0index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
                 index + 1,
                 track.artist,
                 track.title,
-                if let Some(d) = track.play_time {
-                    utils::formatted_duration(d).green()
-                } else {
-                    "".normal()
-                },
+                playtime,
                 index_width = index_width,
                 artist_width = self.max_artist_length,
                 title_width = self.max_title_length,
-                playtime_width = if self.max_playtime_length > 0 {
-                    max(
-                        self.max_playtime_length,
-                        "PLAYTIME".to_string().chars().count(),
-                    )
-                } else {
-                    0
-                }
+                playtime_width = playtime_width
             );
         }
 
         println!("{divider}");
-    }
-
-    /// Get playlist format enum from file extension
-    fn playlist_format(file: &Path) -> Result<FileFormat> {
-        let extension: &str = match file.extension() {
-            None => {
-                anyhow::bail!(
-                    "Input file has no file extension: '{}'. Supported file types are: {}",
-                    file.display(),
-                    FileFormat::iter()
-                        .map(|f| f.to_string())
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                )
-            }
-            Some(ext) => ext.to_str().unwrap(),
-        };
-        FileFormat::from_str(extension)
     }
 
     /// Return default save directory for playlist output file.
@@ -551,7 +538,7 @@ impl Playlist {
         Ok(())
     }
 
-    /// Get DJ playlist path in Dropbox if it exists
+    /// Get DJ playlist directory path in Dropbox if it exists
     fn dropbox_save_dir() -> Option<PathBuf> {
         let path = if cfg!(target_os = "windows") {
             Some(PathBuf::from("D:\\Dropbox\\DJ\\PLAYLIST"))
@@ -564,6 +551,25 @@ impl Playlist {
         path.filter(|p| p.is_dir())
     }
 
+    /// Get playlist format enum from file extension.
+    fn playlist_format(file: &Path) -> Result<FileFormat> {
+        let extension: &str = match file.extension() {
+            None => {
+                anyhow::bail!(
+                    "Input file has no file extension: '{}'. Supported file types are: {}",
+                    file.display(),
+                    FileFormat::iter()
+                        .map(|f| f.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )
+            }
+            Some(ext) => ext.to_str().unwrap(),
+        };
+        FileFormat::from_str(extension)
+    }
+
+    /// Get the longest formatted track playtime length in number of chars.
     fn get_max_playtime_length(tracks: &[Track]) -> usize {
         tracks
             .iter()
@@ -576,70 +582,75 @@ impl Playlist {
             .unwrap_or(0)
     }
 
-    // Split txt content to lines, and each line to separate items
+    /// Split txt content string to lines, and each line to separate items
     fn read_txt_lines(dest: &mut str) -> Vec<Vec<String>> {
-        let lines: Vec<Vec<String>> = {
-            let initial_lines: Vec<Vec<String>> = dest
-                .lines()
-                .map(|s| s.split('\t').map(|l| l.trim().to_string()).collect())
-                .collect();
+        // Convert to lines and split each line from tab. This handles Rekordbox data.
+        let initial_lines: Vec<Vec<String>> = dest
+            .lines()
+            .map(|s| s.split('\t').map(|l| l.trim().to_string()).collect())
+            .collect();
 
-            // Serato txt has a divider on the second line
-            if initial_lines[1][0].chars().all(|c| c == '-') {
-                // This is a Serato txt, need to do some extra parsing here...
-                let header_line: String = initial_lines[0][0].clone();
-                let header_fields: Vec<String> = header_line
-                    .replace("     ", "\t")
-                    .split('\t')
-                    .filter_map(|s| {
-                        let v = s.trim();
-                        if s.is_empty() {
-                            None
-                        } else {
-                            Some(v.to_string())
-                        }
-                    })
-                    .collect();
-                let mut field_indices: Vec<usize> = header_fields
-                    .iter()
-                    .map(|field| header_line.find(field).unwrap())
-                    .collect();
-                field_indices.reverse();
-                let mut serato_lines: Vec<Vec<String>> = vec![];
-                for line in initial_lines {
-                    if line[0].chars().all(|c| c == '-') {
+        // Check if this is a Serato txt: Serato has a divider on the second line
+        if initial_lines[1][0].chars().all(|c| c == '-') {
+            // This is a Serato txt, need to do some extra parsing here...
+            let header_line: String = initial_lines[0][0].clone();
+            let column_names: Vec<String> = header_line
+                .replace("     ", "\t")
+                .split('\t')
+                .filter_map(|s| {
+                    let v = s.trim();
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(v.to_string())
+                    }
+                })
+                .collect();
+            // Get starting location of each column item on a line
+            let mut column_start_indices: Vec<usize> = column_names
+                .iter()
+                .map(|field| header_line.find(field).unwrap())
+                .collect();
+            // Extract each column item from the line, starting from the end of the line
+            column_start_indices.reverse();
+            let mut serato_lines: Vec<Vec<String>> = vec![];
+            for line in initial_lines {
+                // skip the divider lines
+                if line[0].chars().all(|c| c == '-') {
+                    continue;
+                }
+                let mut split_line: Vec<String> = vec![];
+                let mut remaining_line: String = line[0].to_string();
+                for index in &column_start_indices {
+                    // some lines do not contain data in all fields
+                    if *index >= remaining_line.len() {
                         continue;
                     }
-                    let mut split_line: Vec<String> = vec![];
-                    let mut remainder: String = line[0].to_string();
-                    for index in &field_indices {
-                        if *index >= remainder.len() {
-                            continue;
-                        }
-                        let (string_left, value) = remainder.split_at(*index);
-                        split_line.push(value.trim().to_string());
-                        remainder = string_left.to_string();
-                    }
-                    split_line.reverse();
-                    while split_line.len() < header_fields.len() {
-                        split_line.push(String::new());
-                    }
-                    serato_lines.push(split_line);
+                    let (string_left, value) = remaining_line.split_at(*index);
+                    split_line.push(value.trim().to_string());
+                    remaining_line = string_left.to_string();
                 }
-                serato_lines
-            } else {
-                initial_lines
+                // Convert line item order since we extracted items in reverse order
+                split_line.reverse();
+                // pad line in case some columns did not have any data
+                while split_line.len() < column_names.len() {
+                    split_line.push(String::new());
+                }
+                serato_lines.push(split_line);
             }
-        };
-        lines
+            serato_lines
+        } else {
+            initial_lines
+        }
     }
 
-    /// Parse Serato track data
+    /// Parse Serato track data from dictionary
     fn parse_serato_tracks_from_data(
         data: &[BTreeMap<String, String>],
         playlist_date: Option<NaiveDateTime>,
     ) -> Vec<Track> {
         let start_date = playlist_date.unwrap_or_default().date();
+        // TODO: calculate playtime from start times in case it is not included in data
         let initial_tracks: Vec<Track> = {
             data[1..]
                 .iter()
@@ -687,17 +698,17 @@ impl Playlist {
         };
 
         // Remove consecutive duplicates
-        let mut new_tracks_index: usize = 0;
+        let mut index: usize = 0;
         let mut tracks: Vec<Track> = vec![initial_tracks[0].clone()];
         for track in initial_tracks[1..].iter() {
-            let previous_track = &tracks[new_tracks_index];
+            let previous_track = &tracks[index];
             if *previous_track == *track {
                 // duplicate track -> add playtime to previous and skip
-                tracks[new_tracks_index] = previous_track.clone() + track.play_time
+                tracks[index] = previous_track.clone() + track.play_time
             } else {
                 // new track, append to playlist
                 tracks.push(track.clone());
-                new_tracks_index += 1;
+                index += 1;
             }
         }
         tracks
