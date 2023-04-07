@@ -521,9 +521,39 @@ impl Playlist {
     /// Write tracks to CSV file
     fn write_csv_file(&self, filepath: &Path) -> Result<()> {
         let mut writer = csv::Writer::from_path(filepath)?;
-        writer.write_record(["artist", "", "title"])?;
+        writer.write_record(["artist", "", "title", "playtime", "start time", "end time"])?;
         for track in &self.tracks {
-            writer.write_record([track.artist.clone(), "-".to_string(), track.title.clone()])?;
+            let duration = match track.play_time {
+                None => String::new(),
+                Some(d) => utils::formatted_duration(d),
+            };
+            let start_time = match track.start_time {
+                None => String::new(),
+                Some(t) => t.format("%Y.%m.%d %H:%M:%S").to_string(),
+            };
+            let end_time = match track.end_time {
+                None => String::new(),
+                Some(t) => t.format("%Y.%m.%d %H:%M:%S").to_string(),
+            };
+            writer.write_record([
+                track.artist.clone(),
+                "-".to_string(),
+                track.title.clone(),
+                duration,
+                start_time,
+                end_time,
+            ])?;
+        }
+        // Add total duration
+        if let Some(t) = self.total_duration {
+            writer.write_record([
+                String::new(),
+                String::new(),
+                String::new(),
+                utils::formatted_duration(t),
+                String::new(),
+                String::new(),
+            ])?;
         }
         writer.flush()?;
         Ok(())
