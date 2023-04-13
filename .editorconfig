@@ -1,0 +1,27 @@
+# https://EditorConfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.sh]
+binary_next_line = false
+function_next_line = false
+indent_size = 4
+indent_style = space
+keep_padding = true
+shell_variant = bash
+space_redirects = true
+switch_case_indent = true
+
+[*.{yml,yaml}]
+indent_size = 2
+
+# Ignore the entire "third_party" directory.
+[third_party/**]
+ignore = true
