@@ -21,7 +21,3 @@ switch_case_indent = true
 
 [*.{yml,yaml}]
 indent_size = 2
-
-# Ignore the entire "third_party" directory.
-[third_party/**]
-ignore = true
