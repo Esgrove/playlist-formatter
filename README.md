@@ -18,10 +18,15 @@ Python version supports:
 - csv playlists exported from Serato DJ Pro
 - txt playlists exported from Rekordbox
 
-### Dependencies
+### Python dependencies
 
-- Python 3.11+ recommended (due to use of `Self` type hinting), but 3.9+ possible with [typing_extensions](https://github.com/python/typing_extensions)
+- Python 3.11+ recommended (primarily due to use of `Self` type hinting),
+  but 3.9+ possible with [typing_extensions](https://github.com/python/typing_extensions)
 - [requirements.txt](./requirements.txt)
+
+```shell
+python3 -m pip install -r requirements.txt
+```
 
 ### Looks like
 
@@ -38,11 +43,13 @@ New Rust CLI version supports:
 
 > **Note**: Uses Finnish time and date formatting, so might not work fully in case timestamps are in a different format
 
-### Dependencies
+### Rust crates
 
 - [clap](https://github.com/clap-rs/clap) for CLI arguments
 - [chrono](https://github.com/chronotope/chrono) for date and time handling
 - [anyhow](https://github.com/dtolnay/anyhow) for nice error handling and messages
+- [csv](https://github.com/BurntSushi/rust-csv) for csv reading and writing
+- some others for logging etc...
 
 ### Build
 
@@ -81,7 +88,9 @@ Note that you need to specify the path to the directory containing [Cargo.toml](
 cargo install --path .
 ```
 
-Cargo will put the binary under `$HOME/.cargo/bin` by default,
+After this you should have `playfmt` available globally.
+
+**Note:** Cargo will put the binary under `$HOME/.cargo/bin` by default,
 which should be added to PATH so the binaries installed through Cargo will be found.
 
 ### Format Rust code

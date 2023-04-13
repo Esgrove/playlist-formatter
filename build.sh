@@ -25,9 +25,9 @@ pushd "$REPO_ROOT" > /dev/null
 cargo build --release
 
 if [ "$PLATFORM" = windows ]; then
-    executable="playlist_tool.exe"
+    executable="playfmt.exe"
 else
-    executable="playlist_tool"
+    executable="playfmt"
 fi
 
 rm -f "$executable"

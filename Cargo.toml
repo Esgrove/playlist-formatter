@@ -26,5 +26,5 @@ strum = { version = "0.24.1", features = ["derive"] }
 titlecase = "2.2.1"
 
 [[bin]]
-name = "playlist_tool"
+name = "playfmt"
 path = "src/main.rs"
