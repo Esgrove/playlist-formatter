@@ -33,7 +33,7 @@ enum Level {
 #[command(
     author,
     version,
-    about,
+    about = "DJ playlist formatting utility.",
     long_about = "DJ playlist formatting utility. Reads raw playlist files and creates a nicely formatted version.",
     arg_required_else_help = true
 )]
@@ -53,21 +53,11 @@ struct Args {
     log: Option<Level>,
 
     /// Basic formatting style
-    #[arg(
-        short,
-        long,
-        help = "Use basic print formatting style",
-        conflicts_with = "numbered"
-    )]
+    #[arg(short, long, help = "Use basic print formatting style", conflicts_with = "numbered")]
     basic: bool,
 
     /// Numbered formatting style
-    #[arg(
-        short,
-        long,
-        help = "Use numbered print formatting style",
-        conflicts_with = "basic"
-    )]
+    #[arg(short, long, help = "Use numbered print formatting style", conflicts_with = "basic")]
     numbered: bool,
 
     /// Write playlist to file
@@ -90,10 +80,7 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
     }
     let filepath = Path::new(input_file);
     if !filepath.is_file() {
-        anyhow::bail!(
-            "file does not exist or is not accessible: '{}'",
-            filepath.display()
-        );
+        anyhow::bail!("file does not exist or is not accessible: '{}'", filepath.display());
     }
     log::debug!("Playlist file: {}", filepath.display());
 
