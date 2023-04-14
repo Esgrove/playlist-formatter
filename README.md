@@ -73,8 +73,8 @@ cargo run --release
 Cargo will output the executable to either
 
 ```shell
-rust/target/debug/vault
-rust/target/release/vault
+target/debug/playfmt
+target/release/playfmt
 ```
 
 depending on which build profile is used.
