@@ -1,7 +1,8 @@
 use chrono::{Duration, NaiveDateTime};
 
+use std::fmt;
+use std::ops::{Add, AddAssign};
 use std::string::String;
-use std::{fmt, ops};
 
 /// Represents one played track
 #[derive(Debug, Clone)]
@@ -54,7 +55,7 @@ impl Track {
     }
 }
 
-impl ops::Add<Option<Duration>> for Track {
+impl Add<Option<Duration>> for Track {
     type Output = Track;
     fn add(self, duration: Option<Duration>) -> Track {
         let play_time = match self.play_time {
@@ -74,7 +75,7 @@ impl ops::Add<Option<Duration>> for Track {
     }
 }
 
-impl ops::AddAssign<Duration> for Track {
+impl AddAssign<Duration> for Track {
     fn add_assign(&mut self, duration: Duration) {
         if let Some(time) = self.play_time {
             self.play_time = Some(time + duration)
@@ -84,7 +85,7 @@ impl ops::AddAssign<Duration> for Track {
     }
 }
 
-impl ops::Add<Duration> for Track {
+impl Add<Duration> for Track {
     type Output = Track;
     fn add(self, duration: Duration) -> Track {
         Track {

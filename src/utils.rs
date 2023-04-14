@@ -55,7 +55,7 @@ pub fn get_total_playtime(tracks: &[Track]) -> Option<Duration> {
     let mut sum = Duration::seconds(0);
     for track in tracks.iter() {
         if let Some(duration) = track.play_time {
-            // chrono::Duration does not implement AddAssign or sum :(
+            // chrono::Duration does not implement AddAssign or sum() :(
             sum = sum + duration;
         }
     }

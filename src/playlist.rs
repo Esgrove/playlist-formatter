@@ -67,11 +67,7 @@ impl Playlist {
                 .map(|(index, value)| (value.to_string(), index))
                 .collect()
         };
-        log::debug!(
-            "txt headers ({}): {:?}",
-            header_map.keys().len(),
-            header_map.keys()
-        );
+        log::debug!("txt headers ({}): {:?}", header_map.keys().len(), header_map.keys());
 
         // Map track data to a dictionary (header key: track value)
         let data: Vec<BTreeMap<String, String>> = {
@@ -112,16 +108,14 @@ impl Playlist {
             log::debug!("Detected Rekordbox TXT");
             Playlist::read_rekordbox_txt(path, name, &header_map, &data)
         } else {
-            anyhow::bail!(
-                "Input file does not seem to be a valid Serato or Rekordbox txt playlist"
-            );
+            anyhow::bail!("Input file does not seem to be a valid Serato or Rekordbox txt playlist");
         }
     }
 
     /// Read a .csv playlist file
     fn read_csv(path: &Path) -> Result<Playlist> {
-        let mut reader = Reader::from_path(path)
-            .with_context(|| format!("Failed to open CSV file: '{}'", path.display()))?;
+        let mut reader =
+            Reader::from_path(path).with_context(|| format!("Failed to open CSV file: '{}'", path.display()))?;
 
         // map each header name to the column index they correspond to in the data, for example:
         // {"name": 0, "artist": 1, "start time": 2}
@@ -134,11 +128,7 @@ impl Playlist {
                 .collect()
         };
 
-        log::debug!(
-            "CSV headers ({}): {:?}",
-            header_map.keys().len(),
-            header_map.keys()
-        );
+        log::debug!("CSV headers ({}): {:?}", header_map.keys().len(), header_map.keys());
 
         // Only Serato exports .csv files so we know this should be a Serato playlist
         let required_fields = vec!["name", "artist"];
@@ -226,11 +216,7 @@ impl Playlist {
     ///
     /// File path and type will be parsed from the cli option if present.
     /// Otherwise, will try to use default path and file format.
-    pub fn save_playlist_to_file(
-        &self,
-        filepath: Option<String>,
-        overwrite_existing: bool,
-    ) -> Result<()> {
+    pub fn save_playlist_to_file(&self, filepath: Option<String>, overwrite_existing: bool) -> Result<()> {
         let potential_path: Option<PathBuf> = match filepath {
             Some(value) => {
                 let trimmed = value.trim();
@@ -263,7 +249,7 @@ impl Playlist {
                 value
             } else {
                 // Can't use `with_extension` here since it will replace anything after the last dot,
-                // which will alter the name if it contains a date separated by dots for example.
+                // which will alter the name if it contains for example a date separated by dots.
                 utils::append_extension_to_pathbuf(value, "csv")
             }
         } else {
@@ -280,10 +266,7 @@ impl Playlist {
         if path.is_file() {
             log::info!("Output file already exists: {}", path.display());
             if !overwrite_existing {
-                anyhow::bail!(
-                    "use the {} option overwrite an existing output file",
-                    "force".bold()
-                );
+                anyhow::bail!("use the {} option overwrite an existing output file", "force".bold());
             }
             log::info!("Overwriting existing file");
         }
@@ -294,9 +277,7 @@ impl Playlist {
     /// Parse first row data from a Serato playlist.
     ///
     /// This row should contain the playlist name and start datetime.
-    fn parse_serato_playlist_info(
-        data: &BTreeMap<String, String>,
-    ) -> (String, Option<NaiveDateTime>) {
+    fn parse_serato_playlist_info(data: &BTreeMap<String, String>) -> (String, Option<NaiveDateTime>) {
         let playlist_name = match data.get("name") {
             None => String::new(),
             Some(n) => n.to_string(),
@@ -324,11 +305,7 @@ impl Playlist {
         }
 
         let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
-        let name = if playlist_name.is_empty() {
-            name
-        } else {
-            playlist_name
-        };
+        let name = if playlist_name.is_empty() { name } else { playlist_name };
         let tracks = Self::parse_serato_tracks_from_data(data, playlist_date);
         let total_duration = utils::get_total_playtime(&tracks);
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
@@ -406,12 +383,7 @@ impl Playlist {
     fn print_numbered_playlist(&self) {
         let index_width = self.tracks.len().to_string().chars().count();
         for (index, track) in self.tracks.iter().enumerate() {
-            println!(
-                "{:>0index_width$}: {}",
-                index + 1,
-                track,
-                index_width = index_width
-            );
+            println!("{:>0index_width$}: {}", index + 1, track, index_width = index_width);
         }
     }
 
@@ -419,10 +391,7 @@ impl Playlist {
     fn print_pretty_playlist(&self) {
         let index_width = self.tracks.len().to_string().chars().count();
         let playtime_width = if self.max_playtime_length > 0 {
-            max(
-                self.max_playtime_length,
-                "PLAYTIME".to_string().chars().count(),
-            )
+            max(self.max_playtime_length, "PLAYTIME".to_string().chars().count())
         } else {
             0
         };
@@ -504,14 +473,7 @@ impl Playlist {
 
     /// Write playlist to file. Filepath needs to be a ".txt" or ".csv" file.
     fn write_playlist_file(&self, filepath: &Path) -> Result<()> {
-        match filepath
-            .extension()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_lowercase()
-            .as_str()
-        {
+        match filepath.extension().unwrap().to_str().unwrap().to_lowercase().as_str() {
             "csv" => self.write_csv_file(filepath),
             "txt" => self.write_txt_file(filepath),
             _ => anyhow::bail!("Unsupported file extension"),
