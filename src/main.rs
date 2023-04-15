@@ -1,12 +1,5 @@
 #![warn(clippy::cargo)]
 
-mod playlist;
-mod track;
-mod utils;
-
-use crate::playlist::Playlist;
-use crate::utils::FormattingStyle;
-
 use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
@@ -14,6 +7,13 @@ use log::LevelFilter;
 
 use std::io::Write;
 use std::path::Path;
+
+use crate::playlist::Playlist;
+use crate::utils::FormattingStyle;
+
+mod playlist;
+mod track;
+mod utils;
 
 /// Logging level
 #[derive(clap::ValueEnum, Clone, Debug)]
