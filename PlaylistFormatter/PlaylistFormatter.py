@@ -9,7 +9,11 @@ import sys
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Self
+try:
+    # Python 3.11+
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self  # noqa: UP035
 
 import chardet
 import colorama
