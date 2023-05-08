@@ -30,9 +30,9 @@ python3 -m pip install -r requirements.txt
 
 ### Looks like
 
-![alt text](https://github.com/Esgrove/playlistTool/blob/master/playlist_gui.png)
+![gui](playlist_gui.png)
 
-![alt text](https://github.com/Esgrove/playlistTool/blob/master/playlist_cli.png)
+![cli](playlist_cli.png)
 
 ## Rust version
 
