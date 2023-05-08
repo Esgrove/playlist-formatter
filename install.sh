@@ -15,3 +15,5 @@ cargo install --path "$REPO_ROOT"
 if [ -z "$(command -v playfmt)" ]; then
     print_error "Binary not found. Is the Cargo install directory in path?"
 fi
+
+echo "$(playfmt --version) from $(which playfmt)"
