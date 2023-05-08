@@ -1,0 +1,40 @@
+name: rust
+
+# Run either when pushing directly to main/master or in a PR targeting main/master
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - "**.rs"
+  pull_request:
+    branches:
+      - master
+      - main
+    paths:
+      - "**.rs"
+
+# https://github.com/actions-rs/cargo
+jobs:
+  cargo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v3
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: fmt
+        # workaround for color output
+        env:
+          TERM: xterm-256color
+        run: cargo fmt --check --verbose
+
+      - name: clippy
+        env:
+          TERM: xterm-256color
+        run: cargo clippy
