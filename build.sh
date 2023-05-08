@@ -1,25 +1,14 @@
 #!/bin/bash
 set -eo pipefail
 
-REPO_ROOT=$(git rev-parse --show-toplevel || (cd "$(dirname "../${BASH_SOURCE[0]}")" && pwd))
+# Import common functions
+DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=./common.sh
+source "$DIR/common.sh"
 
 if [ -z "$(command -v cargo)" ]; then
-    echo "Cargo not found in path. Maybe install rustup?"
-    exit 1
+    print_error "Cargo not found in path. Maybe install rustup?"
 fi
-
-# Check platform
-case "$(uname -s)" in
-    "Darwin")
-        PLATFORM="mac"
-        ;;
-    "MINGW"*)
-        PLATFORM="windows"
-        ;;
-    *)
-        PLATFORM="linux"
-        ;;
-esac
 
 pushd "$REPO_ROOT" > /dev/null
 cargo build --release
