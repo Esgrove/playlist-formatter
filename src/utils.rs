@@ -34,10 +34,12 @@ pub enum FormattingStyle {
 /// Which DJ software is the playlist from.
 ///
 /// Each software has its own formatting style.
+/// Formatted means it was already processed by this program.
 #[derive(Debug, PartialEq)]
 pub enum PlaylistType {
     Rekordbox,
     Serato,
+    Formatted,
 }
 
 /// Append extension to `PathBuf`, which is somehow missing completely from the standard lib :(

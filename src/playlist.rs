@@ -43,143 +43,6 @@ impl Playlist {
         }
     }
 
-    /// Read a .txt playlist file
-    fn read_txt(path: &Path) -> Result<Playlist> {
-        let file = File::open(path)?;
-        // Rekordbox encodes txt files in UTF-16 :(
-        // This implementation is far from ideal since it reads everything into a single string,
-        // but this way can easily convert to utf-8 using encoding_rs_io
-        let mut decoder = DecodeReaderBytes::new(file);
-        let mut dest = String::new();
-        decoder.read_to_string(&mut dest)?;
-
-        let lines = Self::read_txt_lines(&mut dest);
-        log::debug!("Lines ({}):", lines.len());
-        log::debug!("{:#?}", lines);
-
-        // Map each header name to the column index they correspond to in the data, for example:
-        // {"#": 0, "Artist": 1, "Track Title": 2}
-        let header_map: BTreeMap<String, usize> = {
-            let headers = &lines[0];
-            headers
-                .iter()
-                .enumerate()
-                .map(|(index, value)| (value.to_string(), index))
-                .collect()
-        };
-        log::debug!("txt headers ({}): {:?}", header_map.keys().len(), header_map.keys());
-
-        // Map track data to a dictionary (header key: track value)
-        let data: Vec<BTreeMap<String, String>> = {
-            lines[1..]
-                .iter()
-                .map(|line| {
-                    let mut items: BTreeMap<String, String> = BTreeMap::new();
-                    // header map contains the index of the value corresponding to the key
-                    for (key, index) in &header_map {
-                        let value = &line[*index];
-                        items.insert(key.to_string(), value.to_string());
-                    }
-                    items
-                })
-                .collect()
-        };
-
-        log::debug!("Rows ({}):", data.len());
-        for row in &data {
-            log::debug!("{:#?}", row);
-        }
-
-        // Drop file extension from file name
-        let name = path
-            .with_extension("")
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-
-        // Check playlist type
-        if header_map.contains_key("name") {
-            log::debug!("Detected Serato TXT");
-            Playlist::read_serato_txt(path, name, &header_map, &data)
-        } else if header_map.contains_key("#") {
-            // Rekordbox txt: first line contains headers, line starts with '#'.
-            log::debug!("Detected Rekordbox TXT");
-            Playlist::read_rekordbox_txt(path, name, &header_map, &data)
-        } else {
-            anyhow::bail!("Input file does not seem to be a valid Serato or Rekordbox txt playlist");
-        }
-    }
-
-    /// Read a .csv playlist file
-    fn read_csv(path: &Path) -> Result<Playlist> {
-        let mut reader =
-            Reader::from_path(path).with_context(|| format!("Failed to open CSV file: '{}'", path.display()))?;
-
-        // map each header name to the column index they correspond to in the data, for example:
-        // {"name": 0, "artist": 1, "start time": 2}
-        let header_map: BTreeMap<String, usize> = {
-            let headers = reader.headers()?;
-            headers
-                .iter()
-                .enumerate()
-                .map(|(index, value)| (value.to_string(), index))
-                .collect()
-        };
-
-        log::debug!("CSV headers ({}): {:?}", header_map.keys().len(), header_map.keys());
-
-        // Only Serato exports .csv files so we know this should be a Serato playlist
-        let required_fields = vec!["name", "artist"];
-        for field in required_fields {
-            if !header_map.contains_key(field) {
-                anyhow::bail!("CSV missing required field: '{}'", field)
-            }
-        }
-
-        // Map track data to a dictionary (header key: track value)
-        let data: Vec<BTreeMap<String, String>> = {
-            reader
-                .records()
-                .map(|s| {
-                    let record = s.unwrap();
-                    let mut items: BTreeMap<String, String> = BTreeMap::new();
-                    for (name, index) in &header_map {
-                        let value = &record[*index];
-                        items.insert(name.to_string(), value.to_string());
-                    }
-                    items
-                })
-                .collect()
-        };
-
-        log::debug!("Rows ({}):", data.len());
-        for row in &data {
-            log::debug!("{:?}", row);
-        }
-
-        let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
-        let tracks = Self::parse_serato_tracks_from_data(&data, playlist_date);
-        let total_duration = utils::get_total_playtime(&tracks);
-        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-        let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
-
-        Ok(Playlist {
-            date: playlist_date,
-            file: PathBuf::from(path),
-            file_format: FileFormat::Csv,
-            name: playlist_name,
-            playlist_type: PlaylistType::Serato,
-            tracks,
-            max_artist_length,
-            max_title_length,
-            max_playtime_length,
-            total_duration,
-        })
-    }
-
     /// Print playlist information (but not the tracks themselves)
     pub fn print_info(&self) {
         println!("Playlist: {}", self.name.green(),);
@@ -272,6 +135,184 @@ impl Playlist {
         }
 
         self.write_playlist_file(path.as_path())
+    }
+
+    /// Read a .txt playlist file
+    fn read_txt(path: &Path) -> Result<Playlist> {
+        let file = File::open(path)?;
+        // Rekordbox encodes txt files in UTF-16 :(
+        // This implementation is far from ideal since it reads everything into a single string,
+        // but this way can easily convert to utf-8 using encoding_rs_io
+        let mut decoder = DecodeReaderBytes::new(file);
+        let mut dest = String::new();
+        decoder.read_to_string(&mut dest)?;
+
+        let lines = Self::read_txt_lines(&mut dest);
+        log::debug!("Lines ({}):", lines.len());
+        log::debug!("{:#?}", lines);
+
+        // Map each header name to the column index they correspond to in the data, for example:
+        // {"#": 0, "Artist": 1, "Track Title": 2}
+        let header_map: BTreeMap<String, usize> = {
+            let headers = &lines[0];
+            headers
+                .iter()
+                .enumerate()
+                .map(|(index, value)| (value.to_string(), index))
+                .collect()
+        };
+        log::debug!("txt headers ({}): {:?}", header_map.keys().len(), header_map.keys());
+
+        // Map track data to a dictionary (header key: track value)
+        let data: Vec<BTreeMap<String, String>> = {
+            lines[1..]
+                .iter()
+                .map(|line| {
+                    let mut items: BTreeMap<String, String> = BTreeMap::new();
+                    // header map contains the index of the value corresponding to the key
+                    for (key, index) in &header_map {
+                        let value = &line[*index];
+                        items.insert(key.to_string(), value.to_string());
+                    }
+                    items
+                })
+                .collect()
+        };
+
+        log::debug!("Rows ({}):", data.len());
+        for row in &data {
+            log::debug!("{:#?}", row);
+        }
+
+        // Drop file extension from file name
+        let name = path
+            .with_extension("")
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        // Check playlist type
+        if header_map.contains_key("name") {
+            log::debug!("Detected Serato TXT");
+            Playlist::read_serato_txt(path, name, &header_map, &data)
+        } else if header_map.contains_key("#") {
+            // Rekordbox txt: first line contains headers, line starts with '#'.
+            log::debug!("Detected Rekordbox TXT");
+            Playlist::read_rekordbox_txt(path, name, &header_map, &data)
+        } else {
+            anyhow::bail!("Input file does not seem to be a valid Serato or Rekordbox txt playlist");
+        }
+    }
+
+    /// Read a .csv playlist file
+    fn read_csv(path: &Path) -> Result<Playlist> {
+        let mut reader =
+            Reader::from_path(path).with_context(|| format!("Failed to open CSV file: '{}'", path.display()))?;
+
+        // map each header name to the column index they correspond to in the data, for example:
+        // {"name": 0, "artist": 1, "start time": 2}
+        let header_map: BTreeMap<String, usize> = {
+            let headers = reader.headers()?;
+            headers
+                .iter()
+                .enumerate()
+                .map(|(index, value)| (value.to_string(), index))
+                .collect()
+        };
+
+        log::debug!("CSV headers ({}): {:?}", header_map.keys().len(), header_map.keys());
+
+        let data = Self::map_track_data(&mut reader, &header_map);
+        log::debug!("Rows ({}):", data.len());
+        for row in &data {
+            log::debug!("{:?}", row);
+        }
+
+        // Only Serato exports csv files so we know this should be either a Serato playlist,
+        // or an already formatted CSV created by this program.
+        let formatted_fields = ["artist", "title"];
+        let formatted_csv: bool = formatted_fields.into_iter().all(|field| header_map.contains_key(field));
+        if formatted_csv {
+            // this is an already-formatted CSV
+            Self::read_formatted_csv(path, data)
+        } else {
+            // this should be a Serato CSV
+            let required_serato_fields = ["name", "artist"];
+            for field in required_serato_fields {
+                if !header_map.contains_key(field) {
+                    anyhow::bail!("Serato CSV missing required field: '{}'", field)
+                }
+            }
+            Self::read_serato_csv(path, data)
+        }
+    }
+
+    /// Read a formatted CSV playlist file
+    fn read_formatted_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> Result<Playlist> {
+        // TODO: fix data reading
+        let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
+        let tracks = Self::parse_serato_tracks_from_data(&data, playlist_date);
+        let total_duration = utils::get_total_playtime(&tracks);
+        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
+        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+        let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
+
+        Ok(Playlist {
+            date: playlist_date,
+            file: PathBuf::from(path),
+            file_format: FileFormat::Csv,
+            name: playlist_name,
+            playlist_type: PlaylistType::Formatted,
+            tracks,
+            max_artist_length,
+            max_title_length,
+            max_playtime_length,
+            total_duration,
+        })
+    }
+
+    /// Read a Serato CSV playlist file
+    fn read_serato_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> Result<Playlist> {
+        let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
+        let tracks = Self::parse_serato_tracks_from_data(&data, playlist_date);
+        let total_duration = utils::get_total_playtime(&tracks);
+        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
+        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+        let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
+
+        Ok(Playlist {
+            date: playlist_date,
+            file: PathBuf::from(path),
+            file_format: FileFormat::Csv,
+            name: playlist_name,
+            playlist_type: PlaylistType::Serato,
+            tracks,
+            max_artist_length,
+            max_title_length,
+            max_playtime_length,
+            total_duration,
+        })
+    }
+
+    /// Map track data to a dictionary (header key: track value)
+    fn map_track_data(
+        reader: &mut Reader<File>,
+        header_map: &BTreeMap<String, usize>,
+    ) -> Vec<BTreeMap<String, String>> {
+        reader
+            .records()
+            .map(|s| {
+                let record = s.unwrap();
+                let mut items: BTreeMap<String, String> = BTreeMap::new();
+                for (name, index) in header_map {
+                    let value = &record[*index];
+                    items.insert(name.to_string(), value.to_string());
+                }
+                items
+            })
+            .collect()
     }
 
     /// Parse first row data from a Serato playlist.
