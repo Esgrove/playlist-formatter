@@ -248,6 +248,7 @@ class PlaylistGui(QMainWindow):
 
 
 def run_gui():
+    print("Launching GUI")
     # open GUI
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
