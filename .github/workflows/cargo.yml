@@ -8,12 +8,16 @@ on:
       - main
     paths:
       - "**.rs"
+      - "rust/Cargo.lock"
+      - "rust/Cargo.toml"
   pull_request:
     branches:
       - master
       - main
     paths:
       - "**.rs"
+      - "rust/Cargo.lock"
+      - "rust/Cargo.toml"
 
 # https://github.com/actions-rs/cargo
 jobs:
