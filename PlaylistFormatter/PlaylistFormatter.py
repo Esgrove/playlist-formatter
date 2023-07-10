@@ -9,6 +9,7 @@ import sys
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from pathlib import Path
+
 try:
     # Python 3.11+
     from typing import Self
