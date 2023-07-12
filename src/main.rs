@@ -3,7 +3,6 @@
 use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
-use log::LevelFilter;
 
 use std::io::Write;
 use std::path::Path;
@@ -118,12 +117,12 @@ fn main() -> Result<()> {
 
     // get logging level to use
     let log_level_filter = match args.log {
-        None => LevelFilter::Info,
+        None => log::LevelFilter::Info,
         Some(ref level) => match level {
-            Level::Debug => LevelFilter::Debug,
-            Level::Info => LevelFilter::Info,
-            Level::Warn => LevelFilter::Warn,
-            Level::Error => LevelFilter::Error,
+            Level::Debug => log::LevelFilter::Debug,
+            Level::Info => log::LevelFilter::Info,
+            Level::Warn => log::LevelFilter::Warn,
+            Level::Error => log::LevelFilter::Error,
         },
     };
 
