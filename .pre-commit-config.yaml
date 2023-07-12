@@ -16,40 +16,46 @@ repos:
       - id: end-of-file-fixer
       - id: mixed-line-ending
       - id: trailing-whitespace
+
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.0.272"
+    rev: "v0.0.277"
     hooks:
       - id: ruff
         name: python ruff
         args: [--fix, --exit-non-zero-on-fix]
+
   - repo: https://github.com/psf/black
-    rev: 23.3.0
+    rev: 23.7.0
     hooks:
       - id: black
         name: python black
         language_version: python3.11
+
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
       - id: isort
         name: python isort
+
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.6.0
+    rev: v3.9.0
     hooks:
       - id: pyupgrade
         name: python pyupgrade
         args: [--py39-plus]
+
   - repo: local
     hooks:
       - id: rust-fmt
-        name: rust format
+        name: rust fmt format
         description: Run cargo fmt on files included in the commit. rustfmt should be installed before-hand.
         entry: bash -c 'cargo fmt'
         pass_filenames: true
         types: [file, rust]
         language: system
+
       - id: rust-clippy
-        name: rust lint
+        name: rust clippy lint
         description: Run cargo clippy on files included in the commit. clippy should be installed before-hand.
         entry: bash -c 'cargo clippy'
         pass_filenames: false
