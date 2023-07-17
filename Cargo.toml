@@ -13,7 +13,7 @@ categories = ["Command line utilities", "Parsing tools"]
 keywords = ["DJ", "playlist", "serato", "rekordbox"]
 
 [dependencies]
-anyhow = "1.0.69"
+anyhow = "1.0.72"
 chrono = "0.4.26"
 clap = { version = "4.3.11", features = ["derive"] }
 colored = "2.0.4"
