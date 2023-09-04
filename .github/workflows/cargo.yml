@@ -8,16 +8,16 @@ on:
       - main
     paths:
       - "**.rs"
-      - "rust/Cargo.lock"
-      - "rust/Cargo.toml"
+      - "Cargo.lock"
+      - "Cargo.toml"
   pull_request:
     branches:
       - master
       - main
     paths:
       - "**.rs"
-      - "rust/Cargo.lock"
-      - "rust/Cargo.toml"
+      - "Cargo.lock"
+      - "Cargo.toml"
 
 # https://github.com/actions-rs/cargo
 jobs:
@@ -33,7 +33,7 @@ jobs:
           toolchain: stable
 
       - name: fmt
-        # workaround for color output
+        # workaround for colour output
         env:
           TERM: xterm-256color
         run: cargo fmt --check --verbose
@@ -41,4 +41,6 @@ jobs:
       - name: clippy
         env:
           TERM: xterm-256color
-        run: cargo clippy
+        # exit non-zero if there are any warnings
+        # https://doc.rust-lang.org/stable/clippy/usage.html
+        run: cargo clippy -- -Dwarnings
