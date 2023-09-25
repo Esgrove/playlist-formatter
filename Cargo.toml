@@ -15,7 +15,7 @@ keywords = ["DJ", "playlist", "serato", "rekordbox"]
 [dependencies]
 anyhow = "1.0.75"
 chrono = "0.4.31"
-clap = { version = "4.4.3", features = ["derive"] }
+clap = { version = "4.4.4", features = ["derive"] }
 colored = "2.0.4"
 csv = "1.2.2"
 encoding_rs_io = "0.1.7"
