@@ -20,12 +20,11 @@ Python version supports:
 
 ### Python dependencies
 
-- Python 3.11+ recommended (primarily due to use of `Self` type hinting),
-  but 3.9+ possible with [typing_extensions](https://github.com/python/typing_extensions)
-- [requirements.txt](./requirements.txt)
+- Python 3.11+ required (primarily due to use of `Self` type hinting)
+- Poetry
 
 ```shell
-python3 -m pip install -r requirements.txt
+poetry install
 ```
 
 ### Looks like

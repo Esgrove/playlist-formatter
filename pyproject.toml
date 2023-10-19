@@ -1,65 +1,97 @@
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "playlist_formatter"
+version = "2.0.0"
 description = "Tool for auto-formatting DJ playlists exported from DJ software."
-authors = [{ name = "Akseli Lukkarila", email = "esgrove@outlook.com" }]
-license = { text = "MIT" }
-requires-python = ">=3.9"
-dynamic = ["version"]
-dependencies = [
-    "chardet",
-    "colorama",
-    "darkdetect",
-    "PyQt6",
-    "titlecase",
-    "typing_extensions==4.5.0;python_version<'3.11'",
-]
+authors = ["Akseli Lukkarila <esgrove@outlook.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/Esgrove/playlist_tool"
+repository = "https://github.com/Esgrove/playlist_tool"
+keywords = ["DJ", "playlist"]
 
-[project.readme]
-file = "README.md"
-content-type = "text/markdown"
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[project.urls]
-"Homepage" = "https://github.com/Esgrove/playlist_tool"
+[tool.poetry.dependencies]
+python = "^3.11"
+chardet = "^5.2.0"
+colorama = "^0.4.6"
+darkdetect = "^0.8.0"
+PyQt6 = "^6.5.3"
+titlecase = "^2.4.1"
 
-[project.optional-dependencies]
-dev = ['black', 'isort', 'pip-tools', 'pyupgrade', 'ruff']
+[tool.poetry.dev-dependencies]
+black = "^23.10.0"
+isort = "^5.12.0"
+ruff = "^0.1.0"
 
 [tool.black]
 # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
 line-length = 120
-target-version = ["py311"]
+target-version = ["py311", "py312"]
 include = '\.pyi?$'
 extend-exclude = '''venv*'''
 
-[tool.isort]
-# https://pycqa.github.io/isort/docs/configuration/options.html
-# profile = "black"
-# manually specifying black compatibility to override line length
-multi_line_output = 3
-combine_as_imports = true
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 120
-py_version = 311
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-extend_skip = [".idea", ".vscode", ".venv", "venv"]
-extend_skip_glob = ["venv*/"]
-
 [tool.ruff]
 # https://github.com/charliermarsh/ruff#configuration
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
 target-version = "py311"
 line-length = 120
-select = ["E", "F", "W", "I", "N", "UP"]
+select = ["E4", "E7", "E9", "F", "W", "N", "UP"]
 ignore = []
+per-file-ignores = {}
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["A", "B", "C", "D", "E", "F"]
+fixable = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    #"I",  disable isort rules
+    "N",
+    "Q",
+    "S",
+    "T",
+    "W",
+    "ANN",
+    "ARG",
+    "BLE",
+    "COM",
+    "DJ",
+    "DTZ",
+    "EM",
+    "ERA",
+    "EXE",
+    "FBT",
+    "ICN",
+    "INP",
+    "ISC",
+    "NPY",
+    "PD",
+    "PGH",
+    "PIE",
+    "PL",
+    "PT",
+    "PTH",
+    "PYI",
+    "RET",
+    "RSE",
+    "RUF",
+    "SIM",
+    "SLF",
+    "TCH",
+    "TID",
+    "TRY",
+    "UP",
+    "YTT",
+]
 unfixable = []
 
 # Exclude a variety of commonly ignored directories.
@@ -85,5 +117,30 @@ exclude = [
     "venv*",
 ]
 
-# Allow unused variables when underscore-prefixed.
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+[tool.ruff.isort]
+# https://beta.ruff.rs/docs/settings/#isort
+combine-as-imports = true
+lines-between-types = 1
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.isort]
+# https://pycqa.github.io/isort/docs/configuration/options.html
+# profile = "black"
+# manually specifying black compatibility to override line length
+combine_as_imports = true
+ensure_newline_before_comments = true
+extend_skip = [".idea", ".vscode", ".venv", "venv"]
+extend_skip_glob = ["venv*"]
+force_grid_wrap = 0
+include_trailing_comma = true
+line_length = 120
+multi_line_output = 3
+py_version = 311
+sections = ['FUTURE', 'STDLIB', 'THIRDPARTY', 'FIRSTPARTY', 'LOCALFOLDER']
+use_parentheses = true
