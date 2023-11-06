@@ -257,4 +257,4 @@ regex = ["regex (>=2020.4.4)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "ac31642f23f518eccac2ee8acb2b33b105dfadc31b79cf922b9fd1db6e970495"
+content-hash = "eb1bfd76e118bdf01f91ec1c3faf6cc9cb1c90d6d22452ea56870c773503bc08"
