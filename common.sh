@@ -2,7 +2,8 @@
 set -eo pipefail
 
 # Get absolute path to repo root
-export REPO_ROOT=$(git rev-parse --show-toplevel || (cd "$(dirname "${BASH_SOURCE[0]}")" && pwd))
+REPO_ROOT=$(git rev-parse --show-toplevel || (cd "$(dirname "${BASH_SOURCE[0]}")" && pwd))
+export REPO_ROOT
 
 # Check platform:
 # BSD (Mac) and GNU (Linux & Git for Windows) coreutils implementations
