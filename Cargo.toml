@@ -28,3 +28,9 @@ titlecase = "2.2.1"
 [[bin]]
 name = "playfmt"
 path = "src/main.rs"
+
+[profile.release]
+lto = true
+incremental = true
+# https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
+codegen-units = 1
