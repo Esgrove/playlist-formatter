@@ -28,6 +28,7 @@ pub(crate) struct Playlist {
     pub playlist_type: PlaylistType,
     pub total_duration: Option<Duration>,
     tracks: Vec<Track>,
+    // helpers for formatting
     max_artist_length: usize,
     max_title_length: usize,
     max_playtime_length: usize,
@@ -381,7 +382,7 @@ impl Playlist {
             }
         }
 
-        // rekordbox does not have any start or play time info :(
+        // Rekordbox does not have any start or play time info :(
         let mut tracks: Vec<Track> = {
             data.iter()
                 .map(|row| {
@@ -597,7 +598,7 @@ impl Playlist {
                         .join(", ")
                 )
             }
-            Some(ext) => ext.to_str().unwrap(),
+            Some(ext) => ext.to_str().context("Failed to parse file extension")?,
         };
         FileFormat::from_str(extension)
     }

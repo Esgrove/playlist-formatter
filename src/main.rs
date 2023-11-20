@@ -112,10 +112,10 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    // parse command line arguments
+    // Parse command line arguments
     let args = Args::parse();
 
-    // get logging level to use
+    // Get logging level to use
     let log_level_filter = match args.log {
         None => log::LevelFilter::Info,
         Some(ref level) => match level {
@@ -126,7 +126,7 @@ fn main() -> Result<()> {
         },
     };
 
-    // init logger with timestamps
+    // Init logger with timestamps
     env_logger::Builder::new()
         .format(|buf, record| {
             writeln!(
