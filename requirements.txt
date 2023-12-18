@@ -1,6 +1,6 @@
 chardet==5.2.0
 colorama==0.4.6
 darkdetect==0.8.0
-PyQt6==6.6.0
+PyQt6==6.6.1
 titlecase==2.4.1
 typing_extensions==4.5.0; python_version < '3.11'
