@@ -114,3 +114,8 @@ cargo clippy --fix
 ```shell
 cargo update
 ```
+
+## TODO
+
+- Add unit tests
+- Fix playtime calculations
