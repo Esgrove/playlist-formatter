@@ -24,7 +24,7 @@ titlecase = "^2.4.1"
 [tool.poetry.dev-dependencies]
 black = "^23.12.1"
 isort = "^5.13.0"
-ruff = "^0.1.13"
+ruff = "^0.1.14"
 
 [tool.black]
 # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
