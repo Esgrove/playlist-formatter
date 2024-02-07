@@ -7,24 +7,24 @@ on:
       - main
     paths:
       - "**.rs"
-      - "rust/Cargo.lock"
-      - "rust/Cargo.toml"
-      - ".github/workflows/rust.yml"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - ".github/workflows/rust-build.yml"
   pull_request:
     branches:
       - master
       - main
     paths:
       - "**.rs"
-      - "rust/Cargo.lock"
-      - "rust/Cargo.toml"
-      - ".github/workflows/rust.yml"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - ".github/workflows/rust-build.yml"
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  cargo:
+  build:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -52,15 +52,3 @@ jobs:
 
       - name: Build
         run: cargo build --verbose
-
-      # TODO: enable tests
-      #- name: Run tests
-      #  run: cargo test
-
-      - name: Check formatting
-        run: cargo fmt --check --verbose
-
-      - name: Lint
-        # Exit non-zero if there are any warnings
-        # https://doc.rust-lang.org/stable/clippy/usage.html
-        run: cargo clippy -- -Dwarnings

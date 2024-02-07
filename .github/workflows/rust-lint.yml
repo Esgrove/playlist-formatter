@@ -1,0 +1,54 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - "**.rs"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - ".github/workflows/rust-lint.yml"
+  pull_request:
+    branches:
+      - master
+      - main
+    paths:
+      - "**.rs"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - ".github/workflows/rust-lint.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --check --verbose
+
+      - name: Lint
+        # Exit non-zero if there are any warnings
+        # https://doc.rust-lang.org/stable/clippy/usage.html
+        run: cargo clippy -- -Dwarnings
