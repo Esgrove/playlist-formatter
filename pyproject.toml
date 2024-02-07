@@ -24,7 +24,7 @@ titlecase = "^2.4.1"
 [tool.poetry.dev-dependencies]
 black = "^24.1.1"
 isort = "^5.13.0"
-ruff = "^0.2.0"
+ruff = "^0.2.1"
 
 [tool.black]
 # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
@@ -38,6 +38,8 @@ extend-exclude = '''venv*'''
 include = ["*.py", "*.pyi", "**/pyproject.toml"]
 target-version = "py311"
 line-length = 120
+
+[tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "W", "N", "UP"]
 ignore = []
 per-file-ignores = {}
@@ -117,7 +119,7 @@ exclude = [
     "venv*",
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 # https://beta.ruff.rs/docs/settings/#isort
 combine-as-imports = true
 lines-between-types = 1
