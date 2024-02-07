@@ -3,6 +3,7 @@ Playlist Formatter Tool
 Akseli Lukkarila
 2018-2023
 """
+
 import csv
 import os
 import sys

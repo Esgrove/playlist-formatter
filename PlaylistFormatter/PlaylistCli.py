@@ -3,6 +3,7 @@ Playlist Formatter CLI
 Akseli Lukkarila
 2018-2023
 """
+
 from PlaylistFormatter.PlaylistFormatter import PlaylistFormatter
 
 
