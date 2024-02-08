@@ -37,27 +37,20 @@ repos:
       - id: isort
         name: python isort
 
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.0
-    hooks:
-      - id: pyupgrade
-        name: python pyupgrade
-        args: [--py39-plus]
-
   - repo: local
     hooks:
       - id: rust-fmt
         name: rust fmt format
-        description: Run cargo fmt on files included in the commit. rustfmt should be installed before-hand.
-        entry: bash -c 'cargo fmt'
-        pass_filenames: true
+        description: Run cargo fmt on files included in the commit.
+        entry: cargo fmt
+        pass_filenames: false
         types: [file, rust]
         language: system
 
       - id: rust-clippy
         name: rust clippy lint
-        description: Run cargo clippy on files included in the commit. clippy should be installed before-hand.
-        entry: bash -c 'cargo clippy'
+        description: Run cargo clippy on files included in the commit.
+        entry: cargo clippy
         pass_filenames: false
         types: [file, rust]
         language: system
