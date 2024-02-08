@@ -10,8 +10,7 @@ OPTIONS: All options are optional
         Display these instructions.
 
     --verbose
-        Display commands being executed.
-"
+        Display commands being executed."
 
 # Import common functions
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
