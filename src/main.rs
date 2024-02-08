@@ -85,7 +85,7 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
     log::debug!("Formatting style: {style}");
 
     let formatter = Playlist::new(filepath)?;
-    log::debug!("{:#?}", formatter);
+    log::trace!("{:#?}", formatter);
 
     if style == FormattingStyle::Pretty {
         formatter.print_info();
@@ -126,7 +126,7 @@ fn main() -> Result<()> {
         .filter(None, log_level_filter)
         .init();
 
-    log::debug!("Using log level: {:?}", log_level_filter);
+    log::debug!("Using log level: {}", log_level_filter);
 
     run_playlist_formatter_cli(args)
 }

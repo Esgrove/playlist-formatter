@@ -144,8 +144,8 @@ impl Playlist {
         decoder.read_to_string(&mut dest)?;
 
         let lines = Self::read_txt_lines(&mut dest);
-        log::debug!("Lines ({}):", lines.len());
-        log::debug!("{:#?}", lines);
+        log::trace!("Lines ({}):", lines.len());
+        log::trace!("{:#?}", lines);
 
         // Map each header name to the column index they correspond to in the data, for example:
         // {"#": 0, "Artist": 1, "Track Title": 2}
@@ -157,7 +157,7 @@ impl Playlist {
                 .map(|(index, value)| (value.to_string(), index))
                 .collect()
         };
-        log::debug!("txt headers ({}): {:?}", header_map.keys().len(), header_map.keys());
+        log::trace!("txt headers ({}): {:?}", header_map.keys().len(), header_map.keys());
 
         // Map track data to a dictionary (header key: track value)
         let data: Vec<BTreeMap<String, String>> = {
@@ -175,9 +175,9 @@ impl Playlist {
                 .collect()
         };
 
-        log::debug!("Rows ({}):", data.len());
+        log::trace!("Rows ({}):", data.len());
         for row in &data {
-            log::debug!("{:#?}", row);
+            log::trace!("{:#?}", row);
         }
 
         // Drop file extension from file name
@@ -219,12 +219,12 @@ impl Playlist {
                 .collect()
         };
 
-        log::debug!("CSV headers ({}): {:?}", header_map.keys().len(), header_map.keys());
+        log::trace!("CSV headers ({}): {:?}", header_map.keys().len(), header_map.keys());
 
         let data = Self::map_track_data(&mut reader, &header_map);
-        log::debug!("Rows ({}):", data.len());
+        log::trace!("Rows ({}):", data.len());
         for row in &data {
-            log::debug!("{:?}", row);
+            log::trace!("{:?}", row);
         }
 
         let formatted_fields = ["artist", "title"];

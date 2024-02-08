@@ -45,6 +45,7 @@ pub enum PlaylistType {
 /// Logging level
 #[derive(clap::ValueEnum, Clone, Debug, Display)]
 pub enum Level {
+    Trace,
     Debug,
     Info,
     Warn,
@@ -54,6 +55,7 @@ pub enum Level {
 impl Level {
     pub fn to_log_filter(&self) -> log::LevelFilter {
         match self {
+            Level::Trace => log::LevelFilter::Trace,
             Level::Debug => log::LevelFilter::Debug,
             Level::Info => log::LevelFilter::Info,
             Level::Warn => log::LevelFilter::Warn,
