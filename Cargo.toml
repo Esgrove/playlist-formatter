@@ -1,19 +1,19 @@
 # https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
+name = "playlist_formatter"
+version = "1.2.0"
 authors = ["Akseli Lukkarila <esgrove@outlook.com>"]
 description = "DJ playlist formatting utility"
 edition = "2021"
 license = "MIT"
-name = "playlist_formatter"
 readme = "README.md"
 repository = "https://github.com/Esgrove/playlist_tool"
-version = "1.1.0"
-categories = ["Command line utilities", "Parsing tools"]
-keywords = ["DJ", "playlist", "serato", "rekordbox"]
+categories = ["command-line-utilities"]
+keywords = ["dj", "playlist", "serato", "rekordbox"]
 
 [dependencies]
-anyhow = "1.0.76"
+anyhow = "1.0.79"
 chrono = "0.4.33"
 clap = { version = "4.4.18", features = ["derive"] }
 colored = "2.1.0"
@@ -29,8 +29,10 @@ titlecase = "2.2.1"
 name = "playfmt"
 path = "src/main.rs"
 
+[profile.dev]
+incremental = true
+
 [profile.release]
 lto = true
-incremental = true
 # https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
 codegen-units = 1

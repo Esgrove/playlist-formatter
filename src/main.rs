@@ -23,6 +23,17 @@ enum Level {
     Error,
 }
 
+impl Level {
+    pub fn to_log_filter(&self) -> log::LevelFilter {
+        match self {
+            Level::Debug => log::LevelFilter::Debug,
+            Level::Info => log::LevelFilter::Info,
+            Level::Warn => log::LevelFilter::Warn,
+            Level::Error => log::LevelFilter::Error,
+        }
+    }
+}
+
 /// Command line arguments
 ///
 /// Basic info is read from `Cargo.toml`
@@ -102,8 +113,8 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
 
     formatter.print_playlist(&style);
 
-    if let Some(save_arg) = args.save {
-        formatter.save_playlist_to_file(save_arg, args.force)?;
+    if let Some(path) = args.save {
+        formatter.save_playlist_to_file(path, args.force)?;
     } else if args.output.is_some() {
         formatter.save_playlist_to_file(args.output, args.force)?;
     }
@@ -118,12 +129,7 @@ fn main() -> Result<()> {
     // Get logging level to use
     let log_level_filter = match args.log {
         None => log::LevelFilter::Info,
-        Some(ref level) => match level {
-            Level::Debug => log::LevelFilter::Debug,
-            Level::Info => log::LevelFilter::Info,
-            Level::Warn => log::LevelFilter::Warn,
-            Level::Error => log::LevelFilter::Error,
-        },
+        Some(ref level) => level.to_log_filter(),
     };
 
     // Init logger with timestamps

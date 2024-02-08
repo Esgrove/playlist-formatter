@@ -2,7 +2,7 @@ use crate::track::Track;
 use crate::utils;
 use crate::utils::{FileFormat, FormattingStyle, PlaylistType};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::{Duration, NaiveDateTime, NaiveTime, Timelike};
 use colored::Colorize;
 use csv::Reader;
@@ -12,6 +12,7 @@ use strum::IntoEnumIterator;
 
 use std::cmp::max;
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -76,57 +77,39 @@ impl Playlist {
         }
     }
 
-    /// Write playlist to file.
-    ///
-    /// File path and type will be parsed from the cli option if present.
-    /// Otherwise, will try to use default path and file format.
+    /// Get output file path.
+    pub fn get_output_file_path(&self, filepath: Option<String>) -> PathBuf {
+        let potential_path: Option<PathBuf> = filepath
+            .map(|value| value.trim().to_string())
+            .filter(|trimmed| !trimmed.is_empty())
+            .map(PathBuf::from);
+
+        potential_path.map_or_else(
+            || {
+                // If `potential_path` is `None`, use the default save directory.
+                let mut save_dir = self.default_save_dir();
+                log::info!("Using default save dir: {}", save_dir.display());
+                save_dir.push(self.file.with_extension("csv"));
+                save_dir
+            },
+            |value| {
+                log::info!("Using output path: {}", value.display());
+                match value
+                    .extension()
+                    .and_then(OsStr::to_str)
+                    .map_or(false, |ext| FileFormat::from_str(ext).is_ok())
+                {
+                    true => value,
+                    false => utils::append_extension_to_pathbuf(value, "csv"),
+                }
+            },
+        )
+    }
+
+    /// Write playlist to given file.
     pub fn save_playlist_to_file(&self, filepath: Option<String>, overwrite_existing: bool) -> Result<()> {
-        let potential_path: Option<PathBuf> = match filepath {
-            Some(value) => {
-                let trimmed = value.trim();
-                if trimmed.is_empty() {
-                    None
-                } else {
-                    Some(PathBuf::from(trimmed))
-                }
-            }
-            None => None,
-        };
-
-        let path = if let Some(value) = potential_path {
-            log::info!("Got output path: {}", value.display());
-            // Possible options here:
-            // 1. full path to file
-            // 2. file name with extension
-            // 3. file name without extension
-            // ->
-            // check if there is a file extension, and add default if not
-            // check if it is a path
-            let has_valid_file_extension = match value.extension() {
-                Some(extension) => {
-                    // check if this is a supported file format
-                    FileFormat::from_str(extension.to_str().unwrap()).is_ok()
-                }
-                None => false,
-            };
-            if has_valid_file_extension {
-                value
-            } else {
-                // Can't use `with_extension` here since it will replace anything after the last dot,
-                // which will alter the name if it contains for example a date separated by dots.
-                utils::append_extension_to_pathbuf(value, "csv")
-            }
-        } else {
-            log::debug!("Empty output path given, using default...");
-            let mut save_dir: PathBuf = self.default_save_dir();
-
-            log::info!("Using default save dir: {}", save_dir.display());
-            save_dir.push(self.file.with_extension("csv"));
-            save_dir
-        };
-
+        let path = self.get_output_file_path(filepath);
         log::info!("Saving to: {}", path.display());
-
         if path.is_file() {
             log::info!("Output file already exists: {}", path.display());
             if !overwrite_existing {
@@ -135,7 +118,18 @@ impl Playlist {
             log::info!("Overwriting existing file");
         }
 
-        self.write_playlist_file(path.as_path())
+        let extension = path
+            .extension()
+            .ok_or_else(|| anyhow!("Output file has no extension"))?
+            .to_str()
+            .ok_or_else(|| anyhow!("Output file extension cannot be converted to string"))?
+            .to_lowercase();
+
+        match extension.as_str() {
+            "csv" => self.write_csv_file(&path),
+            "txt" => self.write_txt_file(&path),
+            _ => anyhow::bail!("Unsupported file extension"),
+        }
     }
 
     /// Read a .txt playlist file
@@ -189,9 +183,9 @@ impl Playlist {
         let name = path
             .with_extension("")
             .file_name()
-            .unwrap()
+            .ok_or_else(|| anyhow!("File name not found after dropping extension"))?
             .to_str()
-            .unwrap()
+            .ok_or_else(|| anyhow!("File name contains invalid Unicode"))?
             .to_string();
 
         // Check playlist type
@@ -304,8 +298,8 @@ impl Playlist {
     ) -> Vec<BTreeMap<String, String>> {
         reader
             .records()
-            .map(|s| {
-                let record = s.unwrap();
+            .filter_map(|s| s.ok())
+            .map(|record| {
                 let mut items: BTreeMap<String, String> = BTreeMap::new();
                 for (name, index) in header_map {
                     let value = &record[*index];
@@ -510,15 +504,6 @@ impl Playlist {
                 }
             };
             default_dir
-        }
-    }
-
-    /// Write playlist to file. Filepath needs to be a ".txt" or ".csv" file.
-    fn write_playlist_file(&self, filepath: &Path) -> Result<()> {
-        match filepath.extension().unwrap().to_str().unwrap().to_lowercase().as_str() {
-            "csv" => self.write_csv_file(filepath),
-            "txt" => self.write_txt_file(filepath),
-            _ => anyhow::bail!("Unsupported file extension"),
         }
     }
 
