@@ -38,13 +38,8 @@ cd "$REPO_ROOT"
 
 cargo build --release
 
-if [ "$PLATFORM" = windows ]; then
-    executable="playfmt.exe"
-else
-    executable="playfmt"
-fi
-
 executable=$(get_rust_executable_name)
+echo "executable: $executable"
 rm -f "$executable"
 mv ./target/release/"$executable" "$executable"
 ./"$executable" --version

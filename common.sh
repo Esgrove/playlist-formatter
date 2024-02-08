@@ -66,7 +66,7 @@ get_rust_executable_name() {
     local executable
     executable=$(awk -F'=' '/\[\[bin\]\]/,/name/ {if($1 ~ /name/) print $2}' Cargo.toml | tr -d ' "')
     # If no name under [[bin]], get the package name
-    if [ -z "$name" ]; then
+    if [ -z "$executable" ]; then
         executable=$(awk -F'=' '/\[package\]/,/name/ {if($1 ~ /name/) print $2}' Cargo.toml | tr -d ' "')
     fi
     if [ "$PLATFORM" = windows ]; then
