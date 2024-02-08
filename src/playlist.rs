@@ -1,6 +1,6 @@
 use crate::track::Track;
 use crate::utils;
-use crate::utils::{FileFormat, FormattingStyle, PlaylistType};
+use crate::utils::{FileFormat, FormattingStyle, OutputFormat, PlaylistType};
 
 use anyhow::{anyhow, Context, Result};
 use chrono::{Duration, NaiveDateTime, NaiveTime, Timelike};
@@ -8,6 +8,7 @@ use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use home::home_dir;
+use rust_xlsxwriter::{Format, FormatAlign, FormatBorder, RowNum, Workbook};
 use strum::IntoEnumIterator;
 
 use std::cmp::max;
@@ -172,11 +173,11 @@ impl Playlist {
                 save_dir
             },
             |value| {
-                log::info!("Using output path: {}", value.display());
+                log::info!("Saving to: {}", value.display());
                 match value
                     .extension()
                     .and_then(OsStr::to_str)
-                    .map_or(false, |ext| FileFormat::from_str(ext).is_ok())
+                    .map_or(false, |ext| OutputFormat::from_str(ext).is_ok())
                 {
                     true => value,
                     false => utils::append_extension_to_path(value, "csv"),
@@ -188,10 +189,10 @@ impl Playlist {
     /// Write playlist to given file.
     pub fn save_playlist_to_file(&self, filepath: Option<String>, overwrite_existing: bool) -> Result<()> {
         let path = self.get_output_file_path(filepath);
-        log::info!("Saving to: {}", path.display());
+        log::debug!("Saving to: {}", path.display());
         if path.is_file() {
-            log::info!("Output file already exists: {}", path.display());
             if !overwrite_existing {
+                log::error!("Output file already exists: {}", path.display());
                 anyhow::bail!("use the {} option overwrite an existing output file", "force".bold());
             }
             log::info!("Overwriting existing file");
@@ -207,6 +208,7 @@ impl Playlist {
         match extension.as_str() {
             "csv" => self.write_csv_file(&path),
             "txt" => self.write_txt_file(&path),
+            "xlsx" => self.write_excel_file(&path),
             _ => anyhow::bail!("Unsupported file extension"),
         }
     }
@@ -272,6 +274,58 @@ impl Playlist {
             ])?;
         }
         writer.flush()?;
+        Ok(())
+    }
+
+    /// Write tracks to Excel file
+    fn write_excel_file(&self, filepath: &Path) -> Result<()> {
+        let mut workbook = Workbook::new();
+        let sheet = workbook.add_worksheet().set_name(self.name.clone())?;
+
+        let header_format = Format::new()
+            .set_bold()
+            .set_border_bottom(FormatBorder::Medium)
+            .set_background_color("C6E0B4");
+
+        // Write header
+        sheet.write_string_with_format(0, 0, "Artist", &header_format)?;
+        sheet.write_string_with_format(0, 1, "", &header_format)?;
+        sheet.write_string_with_format(0, 2, "Title", &header_format)?;
+        sheet.write_string_with_format(0, 3, "Playtime", &header_format)?;
+        sheet.write_string_with_format(0, 4, "Start Time", &header_format)?;
+        sheet.write_string_with_format(0, 5, "End Time", &header_format)?;
+
+        let duration_format = Format::new().set_align(FormatAlign::Right).set_num_format("h:mm:ss");
+
+        // Write tracks
+        for (i, track) in self.tracks.iter().enumerate() {
+            let row = (i + 1) as RowNum;
+            let duration = track.play_time.map_or(String::new(), utils::formatted_duration);
+            let start_time = track
+                .start_time
+                .map_or(String::new(), |t| t.format("%Y.%m.%d %H:%M:%S").to_string());
+            let end_time = track
+                .end_time
+                .map_or(String::new(), |t| t.format("%Y.%m.%d %H:%M:%S").to_string());
+
+            sheet.write_string(row, 0, &track.artist)?;
+            sheet.write_string(row, 1, "-")?;
+            sheet.write_string(row, 2, &track.title)?;
+            sheet.write_string_with_format(row, 3, &duration, &duration_format)?;
+            sheet.write_string(row, 4, &start_time)?;
+            sheet.write_string(row, 5, &end_time)?;
+        }
+
+        // Add total duration at the end
+        if let Some(t) = self.total_duration {
+            let total_row = (self.tracks.len() + 1) as RowNum;
+            let formatted_duration = utils::formatted_duration(t);
+            sheet.write_string_with_format(total_row, 3, &formatted_duration, &duration_format)?;
+        }
+
+        sheet.autofit();
+
+        workbook.save(filepath)?;
         Ok(())
     }
 

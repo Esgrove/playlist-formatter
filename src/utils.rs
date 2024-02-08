@@ -19,6 +19,14 @@ pub enum FileFormat {
     Csv,
 }
 
+/// Export file type
+#[derive(Debug, PartialEq, EnumIter, Display)]
+pub enum OutputFormat {
+    Txt,
+    Csv,
+    Xlsx,
+}
+
 /// Output formatting style for playlist printing
 #[derive(Default, Debug, PartialEq, Display)]
 pub enum FormattingStyle {
@@ -113,6 +121,19 @@ impl FromStr for FileFormat {
         match input.to_lowercase().trim() {
             "csv" => Ok(FileFormat::Csv),
             "txt" => Ok(FileFormat::Txt),
+            "" => Err(anyhow!("Can't convert empty string to file format")),
+            _ => Err(anyhow!("Unsupported file format: '{input}'")),
+        }
+    }
+}
+
+impl FromStr for OutputFormat {
+    type Err = anyhow::Error;
+    fn from_str(input: &str) -> Result<OutputFormat> {
+        match input.to_lowercase().trim() {
+            "csv" => Ok(OutputFormat::Csv),
+            "txt" => Ok(OutputFormat::Txt),
+            "xlsx" => Ok(OutputFormat::Xlsx),
             "" => Err(anyhow!("Can't convert empty string to file format")),
             _ => Err(anyhow!("Unsupported file format: '{input}'")),
         }
