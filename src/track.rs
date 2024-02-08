@@ -43,13 +43,13 @@ impl Track {
         }
     }
 
-    /// Get the number of characters the artist name has
+    /// Get the number of characters the artist name has.
     pub fn artist_length(&self) -> usize {
         // .len() counts bytes, not chars
         self.artist.chars().count()
     }
 
-    /// Get the number of characters the song title has
+    /// Get the number of characters the song title has.
     pub fn title_length(&self) -> usize {
         self.title.chars().count()
     }
@@ -81,6 +81,18 @@ impl AddAssign<Duration> for Track {
             self.play_time = Some(time + duration)
         } else {
             self.play_time = Some(duration)
+        }
+    }
+}
+
+impl AddAssign<Option<Duration>> for Track {
+    fn add_assign(&mut self, duration: Option<Duration>) {
+        if let Some(d) = duration {
+            if let Some(time) = self.play_time {
+                self.play_time = Some(time + d)
+            } else {
+                self.play_time = Some(d)
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ pub enum FileFormat {
 #[derive(Default, Debug, PartialEq)]
 pub enum FormattingStyle {
     /// Basic formatting, for example for sharing playlist text online
-    Basic,
+    Simple,
     /// Basic formatting but with track numbers
     Numbered,
     /// Pretty formatting for human readable formatted CLI output
@@ -40,6 +40,26 @@ pub enum PlaylistType {
     Rekordbox,
     Serato,
     Formatted,
+}
+
+/// Logging level
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum Level {
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+
+impl Level {
+    pub fn to_log_filter(&self) -> log::LevelFilter {
+        match self {
+            Level::Debug => log::LevelFilter::Debug,
+            Level::Info => log::LevelFilter::Info,
+            Level::Warn => log::LevelFilter::Warn,
+            Level::Error => log::LevelFilter::Error,
+        }
+    }
 }
 
 /// Append extension to `PathBuf`, which is somehow missing completely from the standard lib :(
@@ -122,7 +142,7 @@ impl fmt::Display for FormattingStyle {
             f,
             "{}",
             match self {
-                FormattingStyle::Basic => "basic",
+                FormattingStyle::Simple => "basic",
                 FormattingStyle::Numbered => "numbered",
                 FormattingStyle::Pretty => "pretty",
             }

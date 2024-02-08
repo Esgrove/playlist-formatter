@@ -71,7 +71,7 @@ impl Playlist {
     /// Print playlist with the given formatting style
     pub fn print_playlist(&self, style: &FormattingStyle) {
         match style {
-            FormattingStyle::Basic => self.print_simple_playlist(),
+            FormattingStyle::Simple => self.print_simple_playlist(),
             FormattingStyle::Numbered => self.print_numbered_playlist(),
             FormattingStyle::Pretty => self.print_pretty_playlist(),
         }
@@ -132,7 +132,8 @@ impl Playlist {
         }
     }
 
-    /// Read a .txt playlist file
+    /// Read a .txt playlist file.
+    /// This can be either a Rekordbox or Serato exported playlist.
     fn read_txt(path: &Path) -> Result<Playlist> {
         let file = File::open(path)?;
         // Rekordbox encodes txt files in UTF-16 :(
@@ -201,7 +202,8 @@ impl Playlist {
         }
     }
 
-    /// Read a .csv playlist file
+    /// Read a .csv playlist file.
+    /// This can be either a Serato playlist or an already formatted file.
     fn read_csv(path: &Path) -> Result<Playlist> {
         let mut reader =
             Reader::from_path(path).with_context(|| format!("Failed to open CSV file: '{}'", path.display()))?;
@@ -225,8 +227,6 @@ impl Playlist {
             log::debug!("{:?}", row);
         }
 
-        // Only Serato exports csv files so we know this should be either a Serato playlist,
-        // or an already formatted CSV created by this program.
         let formatted_fields = ["artist", "title"];
         let formatted_csv: bool = formatted_fields.into_iter().all(|field| header_map.contains_key(field));
         if formatted_csv {
@@ -244,7 +244,7 @@ impl Playlist {
         }
     }
 
-    /// Read a formatted CSV playlist file
+    /// Read a formatted CSV playlist file.
     fn read_formatted_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> Result<Playlist> {
         // TODO: fix data reading
         let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
@@ -268,7 +268,7 @@ impl Playlist {
         })
     }
 
-    /// Read a Serato CSV playlist file
+    /// Read a Serato CSV playlist file.
     fn read_serato_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> Result<Playlist> {
         let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
         let tracks = Self::parse_serato_tracks_from_data(&data, playlist_date);
@@ -291,7 +291,7 @@ impl Playlist {
         })
     }
 
-    /// Map track data to a dictionary (header key: track value)
+    /// Map track data to a dictionary (header key: track value).
     fn map_track_data(
         reader: &mut Reader<File>,
         header_map: &BTreeMap<String, usize>,
@@ -488,7 +488,7 @@ impl Playlist {
     ///
     /// This will first try to use the Dropbox playlist directory if it exists on disk.
     /// After that, it will try the get the directory of the input file.
-    /// Otherwise returns an empty path so the file will go to the current working directory.
+    /// Otherwise, returns an empty path so the file will go to the current working directory.
     fn default_save_dir(&self) -> PathBuf {
         if let Some(dir) = Playlist::dropbox_save_dir() {
             dir
@@ -552,7 +552,7 @@ impl Playlist {
     fn write_txt_file(&self, filepath: &Path) -> Result<()> {
         let mut file = File::create(filepath)?;
         for track in &self.tracks {
-            file.write_all(format!("{} - {}\n", track.artist, track.title).as_ref())?;
+            file.write_all(format!("{}\n", track).as_ref())?;
         }
         Ok(())
     }
@@ -669,7 +669,6 @@ impl Playlist {
         playlist_date: Option<NaiveDateTime>,
     ) -> Vec<Track> {
         let start_date = playlist_date.unwrap_or_default().date();
-        // TODO: calculate playtime from start times in case it is not included in data
         let initial_tracks: Vec<Track> = {
             data[1..]
                 .iter()
@@ -694,7 +693,6 @@ impl Playlist {
                     };
                     let play_time: Option<Duration> = {
                         match row.get("playtime") {
-                            None => None,
                             Some(t) => match NaiveTime::parse_from_str(t, "%H:%M:%S") {
                                 Ok(n) => Some(
                                     Duration::hours(i64::from(n.hour()))
@@ -703,11 +701,18 @@ impl Playlist {
                                 ),
                                 Err(_) => None,
                             },
+                            None => {
+                                if start_time.is_some() && end_time.is_some() {
+                                    Some(end_time.unwrap() - start_time.unwrap())
+                                } else {
+                                    None
+                                }
+                            }
                         }
                     };
                     Track::new_with_time(
-                        row.get("artist").unwrap().to_string(),
-                        row.get("name").unwrap().to_string(),
+                        row.get("artist").unwrap_or(&"".to_string()).to_string(),
+                        row.get("name").unwrap_or(&"".to_string()).to_string(),
                         start_time,
                         end_time,
                         play_time,
@@ -723,7 +728,8 @@ impl Playlist {
             let previous_track = &tracks[index];
             if *previous_track == *track {
                 // duplicate track -> add playtime to previous and skip
-                tracks[index] = previous_track.clone() + track.play_time
+                tracks[index] += track.play_time;
+                tracks[index].end_time = track.end_time;
             } else {
                 // new track, append to playlist
                 tracks.push(track.clone());

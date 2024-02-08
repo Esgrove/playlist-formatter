@@ -5,7 +5,7 @@ mod track;
 mod utils;
 
 use crate::playlist::Playlist;
-use crate::utils::FormattingStyle;
+use crate::utils::{FormattingStyle, Level};
 
 use anyhow::Result;
 use chrono::Local;
@@ -13,26 +13,6 @@ use clap::Parser;
 
 use std::io::Write;
 use std::path::Path;
-
-/// Logging level
-#[derive(clap::ValueEnum, Clone, Debug)]
-enum Level {
-    Debug,
-    Info,
-    Warn,
-    Error,
-}
-
-impl Level {
-    pub fn to_log_filter(&self) -> log::LevelFilter {
-        match self {
-            Level::Debug => log::LevelFilter::Debug,
-            Level::Info => log::LevelFilter::Info,
-            Level::Warn => log::LevelFilter::Warn,
-            Level::Error => log::LevelFilter::Error,
-        }
-    }
-}
 
 /// Command line arguments
 ///
@@ -96,7 +76,7 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
 
     // formatting style to use
     let style = if args.basic {
-        FormattingStyle::Basic
+        FormattingStyle::Simple
     } else if args.numbered {
         FormattingStyle::Numbered
     } else {
