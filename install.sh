@@ -18,4 +18,5 @@ if [ -z "$(command -v playfmt)" ]; then
     print_error_and_exit "Binary not found. Is the Cargo install directory in path?"
 fi
 
-echo "$(playfmt --version) from $(which playfmt)"
+executable=$(get_rust_executable_name)
+echo "$($executable --version) from $(which "$executable")"

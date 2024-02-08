@@ -60,3 +60,17 @@ print_usage_and_exit() {
     # use exit code if given as second argument, otherwise default to 1
     exit "${2:-1}"
 }
+
+# Get the Rust executable name from Cargo.toml
+get_rust_executable_name() {
+    local executable
+    executable=$(awk -F'=' '/\[\[bin\]\]/,/name/ {if($1 ~ /name/) print $2}' Cargo.toml | tr -d ' "')
+    # If no name under [[bin]], get the package name
+    if [ -z "$name" ]; then
+        executable=$(awk -F'=' '/\[package\]/,/name/ {if($1 ~ /name/) print $2}' Cargo.toml | tr -d ' "')
+    fi
+    if [ "$PLATFORM" = windows ]; then
+        executable="${executable}.exe"
+    fi
+    echo "$executable"
+}

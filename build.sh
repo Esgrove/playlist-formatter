@@ -10,36 +10,32 @@ OPTIONS: All options are optional
         Display these instructions.
 
     --verbose
-        Display commands being executed.
-"
+        Display commands being executed."
 
 # Import common functions
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=./common.sh
 source "$DIR/common.sh"
 
-init_options() {
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            --help)
-                echo "$USAGE"
-                exit 1
-                ;;
-            --verbose)
-                set -x
-                ;;
-        esac
-        shift
-    done
-}
-
-init_options "$@"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --help)
+            echo "$USAGE"
+            exit 1
+            ;;
+        --verbose)
+            set -x
+            ;;
+    esac
+    shift
+done
 
 if [ -z "$(command -v cargo)" ]; then
     print_error_and_exit "Cargo not found in path. Maybe install rustup?"
 fi
 
-pushd "$REPO_ROOT" > /dev/null
+cd "$REPO_ROOT"
+
 cargo build --release
 
 if [ "$PLATFORM" = windows ]; then
@@ -48,8 +44,8 @@ else
     executable="playfmt"
 fi
 
+executable=$(get_rust_executable_name)
 rm -f "$executable"
 mv ./target/release/"$executable" "$executable"
 ./"$executable" --version
-./"$executable" -h
-popd > /dev/null
+./"$executable" -h || :
