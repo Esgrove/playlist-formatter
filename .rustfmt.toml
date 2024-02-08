@@ -1,4 +1,9 @@
 # https://rust-lang.github.io/rustfmt/
 edition = "2021"
 max_width = 120
+merge_derives = true
+newline_style = "Unix"
 reorder_imports = true
+reorder_modules = true
+use_field_init_shorthand = true
+use_try_shorthand = true
