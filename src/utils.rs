@@ -118,3 +118,79 @@ impl FromStr for FileFormat {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_append_extension_to_path() {
+        let path = PathBuf::from("/path/to/file");
+        let result = append_extension_to_path(path, "csv");
+        assert_eq!(result.to_str().unwrap(), "/path/to/file.csv");
+
+        let path = PathBuf::from("/path/to/file-2024.01.01");
+        let result = append_extension_to_path(path, "csv");
+        assert_eq!(result.to_str().unwrap(), "/path/to/file-2024.01.01.csv");
+
+        let path = PathBuf::from("14.5.2001");
+        let result = append_extension_to_path(path, "txt");
+        assert_eq!(result.to_str().unwrap(), "14.5.2001.txt");
+    }
+
+    #[test]
+    fn test_get_total_playtime() {
+        let tracks: Vec<Track> = Vec::new();
+        assert_eq!(get_total_playtime(&tracks), None);
+    }
+
+    #[test]
+    fn test_formatted_duration() {
+        let duration = Duration::seconds(59);
+        assert_eq!(formatted_duration(duration), "0:59");
+
+        let duration = Duration::seconds(77);
+        assert_eq!(formatted_duration(duration), "1:17");
+
+        let duration = Duration::minutes(45);
+        assert_eq!(formatted_duration(duration), "45:00");
+
+        let duration = Duration::minutes(60);
+        assert_eq!(formatted_duration(duration), "1:00:00");
+
+        let duration = Duration::minutes(31) + Duration::seconds(33);
+        assert_eq!(formatted_duration(duration), "31:33");
+    }
+
+    #[test]
+    fn test_from_str_valid_format() {
+        assert_eq!(FileFormat::from_str("csv").unwrap(), FileFormat::Csv);
+        assert_eq!(FileFormat::from_str("txt").unwrap(), FileFormat::Txt);
+    }
+
+    #[test]
+    fn from_str_unsupported_format() {
+        let result = FileFormat::from_str("mp3");
+        assert!(
+            result.is_err(),
+            "Expected an error for unsupported format, but got {:?}",
+            result
+        );
+        if let Err(e) = result {
+            assert_eq!(e.to_string(), "Unsupported file format: 'mp3'");
+        }
+    }
+
+    #[test]
+    fn from_str_empty_string() {
+        let result = FileFormat::from_str("");
+        assert!(
+            result.is_err(),
+            "Expected an error for empty string, but got {:?}",
+            result
+        );
+        if let Err(e) = result {
+            assert_eq!(e.to_string(), "Can't convert empty string to file format");
+        }
+    }
+}

@@ -80,6 +80,82 @@ impl Playlist {
         }
     }
 
+    /// Print a simple playlist without any formatting
+    fn print_simple_playlist(&self) {
+        for track in &self.tracks {
+            println!("{track}");
+        }
+    }
+
+    /// Print a simple playlist with track numbers
+    fn print_numbered_playlist(&self) {
+        let index_width = self.tracks.len().to_string().chars().count();
+        for (index, track) in self.tracks.iter().enumerate() {
+            println!("{:>0index_width$}: {}", index + 1, track, index_width = index_width);
+        }
+    }
+
+    /// Print a nicely formatted playlist
+    fn print_pretty_playlist(&self) {
+        let index_width = self.tracks.len().to_string().chars().count();
+        let playtime_width = if self.max_playtime_length > 0 {
+            max(self.max_playtime_length, "PLAYTIME".to_string().chars().count())
+        } else {
+            0
+        };
+
+        let header = if self.max_playtime_length > 0 {
+            format!(
+                "{:<index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
+                "#",
+                "ARTIST",
+                "TITLE",
+                "PLAYTIME",
+                index_width = index_width,
+                artist_width = self.max_artist_length,
+                title_width = self.max_title_length,
+                playtime_width = playtime_width
+            )
+        } else {
+            format!(
+                "{:<index_width$}   {:<artist_width$}   {:<title_width$}",
+                "#",
+                "ARTIST",
+                "TITLE",
+                index_width = index_width,
+                artist_width = self.max_artist_length,
+                title_width = self.max_title_length,
+            )
+        };
+
+        let header_width = header.chars().count();
+        let divider = "-".repeat(header_width);
+
+        println!("{}", header.bold());
+        println!("{divider}");
+
+        for (index, track) in self.tracks.iter().enumerate() {
+            let playtime = if let Some(d) = track.play_time {
+                utils::formatted_duration(d).green()
+            } else {
+                "".normal()
+            };
+            println!(
+                "{:>0index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
+                index + 1,
+                track.artist,
+                track.title,
+                playtime,
+                index_width = index_width,
+                artist_width = self.max_artist_length,
+                title_width = self.max_title_length,
+                playtime_width = playtime_width
+            );
+        }
+
+        println!("{divider}");
+    }
+
     /// Get output file path.
     pub fn get_output_file_path(&self, filepath: Option<String>) -> PathBuf {
         let potential_path: Option<PathBuf> = filepath
@@ -133,6 +209,79 @@ impl Playlist {
             "txt" => self.write_txt_file(&path),
             _ => anyhow::bail!("Unsupported file extension"),
         }
+    }
+
+    /// Return default save directory for playlist output file.
+    ///
+    /// This will first try to use the Dropbox playlist directory if it exists on disk.
+    /// After that, it will try the get the directory of the input file.
+    /// Otherwise, returns an empty path so the file will go to the current working directory.
+    fn default_save_dir(&self) -> PathBuf {
+        if let Some(dir) = Playlist::dropbox_save_dir() {
+            dir
+        } else {
+            let default_dir = match self.file.canonicalize() {
+                Ok(path) => match path.parent() {
+                    Some(parent) => parent.to_path_buf(),
+                    None => PathBuf::new(),
+                },
+                Err(error) => {
+                    log::error!("Failed to resolve full path to input file: {}", error);
+                    PathBuf::new()
+                }
+            };
+            default_dir
+        }
+    }
+
+    /// Write tracks to CSV file
+    fn write_csv_file(&self, filepath: &Path) -> Result<()> {
+        let mut writer = csv::Writer::from_path(filepath)?;
+        writer.write_record(["artist", "", "title", "playtime", "start time", "end time"])?;
+        for track in &self.tracks {
+            let duration = match track.play_time {
+                None => String::new(),
+                Some(d) => utils::formatted_duration(d),
+            };
+            let start_time = match track.start_time {
+                None => String::new(),
+                Some(t) => t.format("%Y.%m.%d %H:%M:%S").to_string(),
+            };
+            let end_time = match track.end_time {
+                None => String::new(),
+                Some(t) => t.format("%Y.%m.%d %H:%M:%S").to_string(),
+            };
+            writer.write_record([
+                track.artist.clone(),
+                "-".to_string(),
+                track.title.clone(),
+                duration,
+                start_time,
+                end_time,
+            ])?;
+        }
+        // Add total duration
+        if let Some(t) = self.total_duration {
+            writer.write_record([
+                String::new(),
+                String::new(),
+                String::new(),
+                utils::formatted_duration(t),
+                String::new(),
+                String::new(),
+            ])?;
+        }
+        writer.flush()?;
+        Ok(())
+    }
+
+    /// Write tracks to TXT file
+    fn write_txt_file(&self, filepath: &Path) -> Result<()> {
+        let mut file = File::create(filepath)?;
+        for track in &self.tracks {
+            file.write_all(format!("{}\n", track).as_ref())?;
+        }
+        Ok(())
     }
 
     /// Read a .txt playlist file.
@@ -409,155 +558,6 @@ impl Playlist {
             max_playtime_length: 0,
             total_duration: None,
         })
-    }
-
-    /// Print a simple playlist without any formatting
-    fn print_simple_playlist(&self) {
-        for track in &self.tracks {
-            println!("{track}");
-        }
-    }
-
-    /// Print a simple playlist with track numbers
-    fn print_numbered_playlist(&self) {
-        let index_width = self.tracks.len().to_string().chars().count();
-        for (index, track) in self.tracks.iter().enumerate() {
-            println!("{:>0index_width$}: {}", index + 1, track, index_width = index_width);
-        }
-    }
-
-    /// Print a nicely formatted playlist
-    fn print_pretty_playlist(&self) {
-        let index_width = self.tracks.len().to_string().chars().count();
-        let playtime_width = if self.max_playtime_length > 0 {
-            max(self.max_playtime_length, "PLAYTIME".to_string().chars().count())
-        } else {
-            0
-        };
-
-        let header = if self.max_playtime_length > 0 {
-            format!(
-                "{:<index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
-                "#",
-                "ARTIST",
-                "TITLE",
-                "PLAYTIME",
-                index_width = index_width,
-                artist_width = self.max_artist_length,
-                title_width = self.max_title_length,
-                playtime_width = playtime_width
-            )
-        } else {
-            format!(
-                "{:<index_width$}   {:<artist_width$}   {:<title_width$}",
-                "#",
-                "ARTIST",
-                "TITLE",
-                index_width = index_width,
-                artist_width = self.max_artist_length,
-                title_width = self.max_title_length,
-            )
-        };
-
-        let header_width = header.chars().count();
-        let divider = "-".repeat(header_width);
-
-        println!("{}", header.bold());
-        println!("{divider}");
-
-        for (index, track) in self.tracks.iter().enumerate() {
-            let playtime = if let Some(d) = track.play_time {
-                utils::formatted_duration(d).green()
-            } else {
-                "".normal()
-            };
-            println!(
-                "{:>0index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
-                index + 1,
-                track.artist,
-                track.title,
-                playtime,
-                index_width = index_width,
-                artist_width = self.max_artist_length,
-                title_width = self.max_title_length,
-                playtime_width = playtime_width
-            );
-        }
-
-        println!("{divider}");
-    }
-
-    /// Return default save directory for playlist output file.
-    ///
-    /// This will first try to use the Dropbox playlist directory if it exists on disk.
-    /// After that, it will try the get the directory of the input file.
-    /// Otherwise, returns an empty path so the file will go to the current working directory.
-    fn default_save_dir(&self) -> PathBuf {
-        if let Some(dir) = Playlist::dropbox_save_dir() {
-            dir
-        } else {
-            let default_dir = match self.file.canonicalize() {
-                Ok(path) => match path.parent() {
-                    Some(parent) => parent.to_path_buf(),
-                    None => PathBuf::new(),
-                },
-                Err(error) => {
-                    log::error!("Failed to resolve full path to input file: {}", error);
-                    PathBuf::new()
-                }
-            };
-            default_dir
-        }
-    }
-
-    /// Write tracks to CSV file
-    fn write_csv_file(&self, filepath: &Path) -> Result<()> {
-        let mut writer = csv::Writer::from_path(filepath)?;
-        writer.write_record(["artist", "", "title", "playtime", "start time", "end time"])?;
-        for track in &self.tracks {
-            let duration = match track.play_time {
-                None => String::new(),
-                Some(d) => utils::formatted_duration(d),
-            };
-            let start_time = match track.start_time {
-                None => String::new(),
-                Some(t) => t.format("%Y.%m.%d %H:%M:%S").to_string(),
-            };
-            let end_time = match track.end_time {
-                None => String::new(),
-                Some(t) => t.format("%Y.%m.%d %H:%M:%S").to_string(),
-            };
-            writer.write_record([
-                track.artist.clone(),
-                "-".to_string(),
-                track.title.clone(),
-                duration,
-                start_time,
-                end_time,
-            ])?;
-        }
-        // Add total duration
-        if let Some(t) = self.total_duration {
-            writer.write_record([
-                String::new(),
-                String::new(),
-                String::new(),
-                utils::formatted_duration(t),
-                String::new(),
-                String::new(),
-            ])?;
-        }
-        writer.flush()?;
-        Ok(())
-    }
-
-    /// Write tracks to TXT file
-    fn write_txt_file(&self, filepath: &Path) -> Result<()> {
-        let mut file = File::create(filepath)?;
-        for track in &self.tracks {
-            file.write_all(format!("{}\n", track).as_ref())?;
-        }
-        Ok(())
     }
 
     /// Get DJ playlist directory path in Dropbox if it exists
