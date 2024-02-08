@@ -4,23 +4,23 @@ use anyhow::anyhow;
 use anyhow::Result;
 use chrono::Duration;
 use strum::EnumIter;
+use strum_macros::Display;
 
 use std::ffi::OsStr;
 use std::ffi::OsString;
-use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::String;
 
 /// Playlist file type
-#[derive(Debug, PartialEq, EnumIter)]
+#[derive(Debug, PartialEq, EnumIter, Display)]
 pub enum FileFormat {
     Txt,
     Csv,
 }
 
 /// Output formatting style for playlist printing
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Display)]
 pub enum FormattingStyle {
     /// Basic formatting, for example for sharing playlist text online
     Simple,
@@ -35,7 +35,7 @@ pub enum FormattingStyle {
 ///
 /// Each software has its own formatting style.
 /// Formatted means it was already processed by this program.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Display)]
 pub enum PlaylistType {
     Rekordbox,
     Serato,
@@ -43,7 +43,7 @@ pub enum PlaylistType {
 }
 
 /// Logging level
-#[derive(clap::ValueEnum, Clone, Debug)]
+#[derive(clap::ValueEnum, Clone, Debug, Display)]
 pub enum Level {
     Debug,
     Info,
@@ -65,10 +65,10 @@ impl Level {
 /// Append extension to `PathBuf`, which is somehow missing completely from the standard lib :(
 ///
 /// <https://internals.rust-lang.org/t/pathbuf-has-set-extension-but-no-add-extension-cannot-cleanly-turn-tar-to-tar-gz/14187/10>
-pub fn append_extension_to_pathbuf(path: PathBuf, extension: impl AsRef<OsStr>) -> PathBuf {
+pub fn append_extension_to_path(path: PathBuf, extension: impl AsRef<OsStr>) -> PathBuf {
     let mut os_string: OsString = path.into();
     os_string.push(".");
-    os_string.push(extension.as_ref());
+    os_string.push(extension);
     os_string.into()
 }
 
@@ -114,38 +114,5 @@ impl FromStr for FileFormat {
             "" => Err(anyhow!("Can't convert empty string to file format")),
             _ => Err(anyhow!("Unsupported file format: '{input}'")),
         }
-    }
-}
-
-impl fmt::Display for PlaylistType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl fmt::Display for FileFormat {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                FileFormat::Txt => "txt",
-                FileFormat::Csv => "csv",
-            }
-        )
-    }
-}
-
-impl fmt::Display for FormattingStyle {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                FormattingStyle::Simple => "basic",
-                FormattingStyle::Numbered => "numbered",
-                FormattingStyle::Pretty => "pretty",
-            }
-        )
     }
 }

@@ -100,7 +100,7 @@ impl Playlist {
                     .map_or(false, |ext| FileFormat::from_str(ext).is_ok())
                 {
                     true => value,
-                    false => utils::append_extension_to_pathbuf(value, "csv"),
+                    false => utils::append_extension_to_path(value, "csv"),
                 }
             },
         )
@@ -673,42 +673,23 @@ impl Playlist {
             data[1..]
                 .iter()
                 .map(|row| {
-                    let start_time: Option<NaiveDateTime> = {
-                        match row.get("start time") {
-                            None => None,
-                            Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
-                                Ok(n) => Some(NaiveDateTime::new(start_date, n)),
-                                Err(_) => None,
-                            },
-                        }
-                    };
-                    let end_time: Option<NaiveDateTime> = {
-                        match row.get("end time") {
-                            None => None,
-                            Some(t) => match NaiveTime::parse_from_str(t, "%H.%M.%S %Z") {
-                                Ok(n) => Some(NaiveDateTime::new(start_date, n)),
-                                Err(_) => None,
-                            },
-                        }
-                    };
-                    let play_time: Option<Duration> = {
-                        match row.get("playtime") {
-                            Some(t) => match NaiveTime::parse_from_str(t, "%H:%M:%S") {
-                                Ok(n) => Some(
-                                    Duration::hours(i64::from(n.hour()))
-                                        + Duration::minutes(i64::from(n.minute()))
-                                        + Duration::seconds(i64::from(n.second())),
-                                ),
-                                Err(_) => None,
-                            },
-                            None => {
-                                if start_time.is_some() && end_time.is_some() {
-                                    Some(end_time.unwrap() - start_time.unwrap())
-                                } else {
-                                    None
-                                }
-                            }
-                        }
+                    let start_time: Option<NaiveDateTime> = row
+                        .get("start time")
+                        .and_then(|t| NaiveTime::parse_from_str(t, "%H.%M.%S %Z").ok())
+                        .map(|n| NaiveDateTime::new(start_date, n));
+
+                    let end_time: Option<NaiveDateTime> = row
+                        .get("end time")
+                        .and_then(|t| NaiveTime::parse_from_str(t, "%H.%M.%S %Z").ok())
+                        .map(|n| NaiveDateTime::new(start_date, n));
+
+                    let play_time = match row.get("playtime") {
+                        Some(t) => NaiveTime::parse_from_str(t, "%H:%M:%S").ok().map(|n| {
+                            Duration::hours(i64::from(n.hour()))
+                                + Duration::minutes(i64::from(n.minute()))
+                                + Duration::seconds(i64::from(n.second()))
+                        }),
+                        None => start_time.and_then(|start| end_time.map(|end| end - start)),
                     };
                     Track::new_with_time(
                         row.get("artist").unwrap_or(&"".to_string()).to_string(),
