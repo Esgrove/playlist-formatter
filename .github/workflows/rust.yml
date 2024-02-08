@@ -9,7 +9,7 @@ on:
       - "**.rs"
       - "Cargo.lock"
       - "Cargo.toml"
-      - ".github/workflows/rust-build.yml"
+      - ".github/workflows/rust.yml"
   pull_request:
     branches:
       - master
@@ -18,7 +18,7 @@ on:
       - "**.rs"
       - "Cargo.lock"
       - "Cargo.toml"
-      - ".github/workflows/rust-build.yml"
+      - ".github/workflows/rust.yml"
 
 env:
   CARGO_TERM_COLOR: always
