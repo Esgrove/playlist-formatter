@@ -47,16 +47,19 @@ impl Playlist {
 
     /// Print playlist information (but not the tracks themselves)
     pub fn print_info(&self) {
-        println!("Playlist: {}", self.name.green(),);
-        println!("Filepath: {}", self.file.canonicalize().unwrap().display());
+        println!("Playlist: {}", self.name.green());
+        println!(
+            "Filepath: {}",
+            self.file.canonicalize().unwrap_or(self.file.clone()).display()
+        );
         println!(
             "Format: {}, Type: {}, Date: {}",
-            self.file_format,
+            self.file_format.to_string().cyan(),
             self.playlist_type.to_string().cyan(),
             if let Some(date) = self.date {
-                date.format("%Y.%m.%d %H:%M").to_string()
+                date.format("%Y.%m.%d %H:%M").to_string().magenta()
             } else {
-                "unknown".to_string()
+                "unknown".to_string().yellow()
             }
         );
         print!("Tracks: {}", self.tracks.len());
