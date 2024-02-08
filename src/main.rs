@@ -31,10 +31,10 @@ struct Args {
     /// Playlist file to process (required)
     file: String,
 
-    /// Optional output path. Specifying this will automatically save the playlist.
+    /// Optional output path to save playlist to
     output: Option<String>,
 
-    /// Overwrite an existing file
+    /// Overwrite an existing output file
     #[arg(short, long, help = "Overwrite an existing file")]
     force: bool,
 
@@ -76,7 +76,7 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
 
     // formatting style to use
     let style = if args.basic {
-        FormattingStyle::Simple
+        FormattingStyle::Basic
     } else if args.numbered {
         FormattingStyle::Numbered
     } else {

@@ -74,7 +74,7 @@ impl Playlist {
     /// Print playlist with the given formatting style
     pub fn print_playlist(&self, style: &FormattingStyle) {
         match style {
-            FormattingStyle::Simple => self.print_simple_playlist(),
+            FormattingStyle::Basic => self.print_simple_playlist(),
             FormattingStyle::Numbered => self.print_numbered_playlist(),
             FormattingStyle::Pretty => self.print_pretty_playlist(),
         }

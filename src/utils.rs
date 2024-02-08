@@ -23,7 +23,7 @@ pub enum FileFormat {
 #[derive(Default, Debug, PartialEq, Display)]
 pub enum FormattingStyle {
     /// Basic formatting, for example for sharing playlist text online
-    Simple,
+    Basic,
     /// Basic formatting but with track numbers
     Numbered,
     /// Pretty formatting for human readable formatted CLI output
