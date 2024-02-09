@@ -3,11 +3,13 @@ use crate::utils;
 use crate::utils::{FileFormat, FormattingStyle, OutputFormat, PlaylistType};
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{Duration, NaiveDateTime, NaiveTime, Timelike};
+use chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
 use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use home::home_dir;
+use lazy_static::lazy_static;
+use regex::Regex;
 use rust_xlsxwriter::{Format, FormatAlign, FormatBorder, RowNum, Workbook};
 use strum::IntoEnumIterator;
 
@@ -19,6 +21,13 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
+
+lazy_static! {
+    static ref RE_DD_MM_YYYY: Regex =
+        Regex::new(r"(\d{1,2})\.(\d{1,2})\.(\d{4})").expect("Failed to create regex pattern for dd.mm.yyyy");
+    static ref RE_YYYY_MM_DD: Regex =
+        Regex::new(r"(\d{4})\.(\d{1,2})\.(\d{1,2})").expect("Failed to create regex pattern for yyyy.mm.dd");
+}
 
 /// Holds imported playlist data
 #[derive(Debug)]
@@ -525,10 +534,13 @@ impl Playlist {
             Some(n) => n.to_string(),
         };
         // timestamp, for example "10.01.2019, 20.00.00 EET"
-        let playlist_date = match data.get("start time") {
+        let mut playlist_date = match data.get("start time") {
             None => None,
             Some(time) => NaiveDateTime::parse_from_str(time, "%d.%m.%Y, %H.%M.%S %Z").ok(),
         };
+        if playlist_date.is_none() && !playlist_name.is_empty() {
+            playlist_date = Self::extract_datetime_from_name(&playlist_name);
+        }
         (playlist_name, playlist_date)
     }
 
@@ -548,6 +560,11 @@ impl Playlist {
 
         let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
         let name = if playlist_name.is_empty() { name } else { playlist_name };
+        let date = if playlist_date.is_none() {
+            Self::extract_datetime_from_name(&name)
+        } else {
+            playlist_date
+        };
         let tracks = Self::parse_serato_tracks_from_data(data, playlist_date);
         let total_duration = utils::get_total_playtime(&tracks);
         let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
@@ -555,7 +572,7 @@ impl Playlist {
         let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
 
         Ok(Playlist {
-            date: playlist_date,
+            date,
             file: PathBuf::from(path),
             file_format: FileFormat::Txt,
             name,
@@ -582,6 +599,8 @@ impl Playlist {
             }
         }
 
+        let date = Self::extract_datetime_from_name(&name);
+
         // Rekordbox does not have any start or play time info :(
         let mut tracks: Vec<Track> = {
             data.iter()
@@ -601,7 +620,7 @@ impl Playlist {
         let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
 
         Ok(Playlist {
-            date: None,
+            date,
             file: PathBuf::from(path),
             file_format: FileFormat::Txt,
             name,
@@ -775,5 +794,23 @@ impl Playlist {
             }
         }
         tracks
+    }
+
+    fn extract_datetime_from_name(input: &str) -> Option<NaiveDateTime> {
+        if let Some(caps) = RE_DD_MM_YYYY.captures(input) {
+            let day = caps.get(1)?.as_str().parse::<u32>().ok()?;
+            let month = caps.get(2)?.as_str().parse::<u32>().ok()?;
+            let year = caps.get(3)?.as_str().parse::<i32>().ok()?;
+            let date = NaiveDate::from_ymd_opt(year, month, day)?;
+            return date.and_hms_opt(0, 0, 0);
+        }
+        if let Some(caps) = RE_YYYY_MM_DD.captures(input) {
+            let year = caps.get(1)?.as_str().parse::<i32>().ok()?;
+            let month = caps.get(2)?.as_str().parse::<u32>().ok()?;
+            let day = caps.get(3)?.as_str().parse::<u32>().ok()?;
+            let date = NaiveDate::from_ymd_opt(year, month, day)?;
+            return date.and_hms_opt(0, 0, 0);
+        }
+        None
     }
 }
