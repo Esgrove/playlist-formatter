@@ -252,3 +252,6 @@ fabric.properties
 
 ######## OTHER ########
 /playfmt
+/*.txt
+/*.exe
+/*.csv
