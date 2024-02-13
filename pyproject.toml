@@ -22,7 +22,7 @@ PyQt6 = "^6.6.1"
 titlecase = "^2.4.1"
 
 [tool.poetry.dev-dependencies]
-black = "^24.1.1"
+black = "^24.2.0"
 isort = "^5.13.0"
 ruff = "^0.2.1"
 
