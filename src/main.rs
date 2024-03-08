@@ -4,15 +4,16 @@ mod playlist;
 mod track;
 mod utils;
 
-use crate::playlist::Playlist;
-use crate::utils::{FormattingStyle, Level};
+use std::io::Write;
+use std::path::Path;
 
 use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
+use log::LevelFilter;
 
-use std::io::Write;
-use std::path::Path;
+use crate::playlist::Playlist;
+use crate::utils::{FormattingStyle, Level};
 
 /// Command line arguments
 ///
@@ -62,6 +63,38 @@ struct Args {
     save: Option<Option<String>>,
 }
 
+fn main() -> Result<()> {
+    // Parse command line arguments
+    let args = Args::parse();
+
+    // Get logging level to use
+    let log_level_filter = match args.log {
+        None => log::LevelFilter::Info,
+        Some(ref level) => level.to_log_filter(),
+    };
+
+    init_logger(log_level_filter);
+    run_playlist_formatter_cli(args)
+}
+
+fn init_logger(log_level_filter: LevelFilter) {
+    // Init logger with timestamps
+    env_logger::Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}]: {}",
+                Local::now().format("%Y-%m-%d %H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .filter(None, log_level_filter)
+        .init();
+
+    log::debug!("Using log level: {}", log_level_filter);
+}
+
 /// Run playlist formatting based on command line arguments
 fn run_playlist_formatter_cli(args: Args) -> Result<()> {
     let input_file = args.file.trim();
@@ -93,40 +126,11 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
 
     formatter.print_playlist(&style);
 
-    if let Some(path) = args.save {
-        formatter.save_playlist_to_file(path, args.force)?;
+    if let Some(save_path) = args.save {
+        formatter.save_playlist_to_file(save_path, args.force)?;
     } else if args.output.is_some() {
         formatter.save_playlist_to_file(args.output, args.force)?;
     }
 
     Ok(())
-}
-
-fn main() -> Result<()> {
-    // Parse command line arguments
-    let args = Args::parse();
-
-    // Get logging level to use
-    let log_level_filter = match args.log {
-        None => log::LevelFilter::Info,
-        Some(ref level) => level.to_log_filter(),
-    };
-
-    // Init logger with timestamps
-    env_logger::Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}]: {}",
-                Local::now().format("%Y-%m-%d %H:%M:%S"),
-                record.level(),
-                record.args()
-            )
-        })
-        .filter(None, log_level_filter)
-        .init();
-
-    log::debug!("Using log level: {}", log_level_filter);
-
-    run_playlist_formatter_cli(args)
 }

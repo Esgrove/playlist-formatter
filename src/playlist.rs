@@ -1,9 +1,14 @@
-use crate::track::Track;
-use crate::utils;
-use crate::utils::{FileFormat, FormattingStyle, OutputFormat, PlaylistType};
+use std::cmp::max;
+use std::collections::BTreeMap;
+use std::ffi::OsStr;
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+use std::string::String;
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, Timelike};
 use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
@@ -13,14 +18,9 @@ use regex::Regex;
 use rust_xlsxwriter::{Format, FormatAlign, FormatBorder, RowNum, Workbook};
 use strum::IntoEnumIterator;
 
-use std::cmp::max;
-use std::collections::BTreeMap;
-use std::ffi::OsStr;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::string::String;
+use crate::track::Track;
+use crate::utils;
+use crate::utils::{FileFormat, FormattingStyle, PlaylistType};
 
 lazy_static! {
     static ref RE_DD_MM_YYYY: Regex =
@@ -37,7 +37,7 @@ pub(crate) struct Playlist {
     pub file: PathBuf,
     pub name: String,
     pub playlist_type: PlaylistType,
-    pub total_duration: Option<Duration>,
+    pub total_duration: Option<TimeDelta>,
     tracks: Vec<Track>,
     // helpers for formatting
     max_artist_length: usize,
@@ -75,13 +75,13 @@ impl Playlist {
         print!("Tracks: {}", self.tracks.len());
         if let Some(duration) = self.total_duration {
             print!(", Total duration: {}", utils::formatted_duration(duration));
-            let average = Duration::seconds(duration.num_seconds() / self.tracks.len() as i64);
+            let average = TimeDelta::try_seconds(duration.num_seconds() / self.tracks.len() as i64).unwrap();
             print!(" (avg. {} per track)", utils::formatted_duration(average));
         };
         println!("\n");
     }
 
-    /// Print playlist with the given formatting style
+    /// Print playlist with the given formatting style.
     pub fn print_playlist(&self, style: &FormattingStyle) {
         match style {
             FormattingStyle::Basic => self.print_simple_playlist(),
@@ -90,14 +90,14 @@ impl Playlist {
         }
     }
 
-    /// Print a simple playlist without any formatting
+    /// Print a simple playlist without any formatting.
     fn print_simple_playlist(&self) {
         for track in &self.tracks {
             println!("{track}");
         }
     }
 
-    /// Print a simple playlist with track numbers
+    /// Print a simple playlist with track numbers.
     fn print_numbered_playlist(&self) {
         let index_width = self.tracks.len().to_string().chars().count();
         for (index, track) in self.tracks.iter().enumerate() {
@@ -105,7 +105,7 @@ impl Playlist {
         }
     }
 
-    /// Print a nicely formatted playlist
+    /// Print a nicely formatted playlist.
     fn print_pretty_playlist(&self) {
         let index_width = self.tracks.len().to_string().chars().count();
         let playtime_width = if self.max_playtime_length > 0 {
@@ -186,7 +186,7 @@ impl Playlist {
                 match value
                     .extension()
                     .and_then(OsStr::to_str)
-                    .map_or(false, |ext| OutputFormat::from_str(ext).is_ok())
+                    .map_or(false, |ext| FileFormat::from_str(ext).is_ok())
                 {
                     true => value,
                     false => utils::append_extension_to_path(value, "csv"),
@@ -271,7 +271,7 @@ impl Playlist {
                 end_time,
             ])?;
         }
-        // Add total duration
+        // Add total TimeDelta
         if let Some(t) = self.total_duration {
             writer.write_record([
                 String::new(),
@@ -325,7 +325,7 @@ impl Playlist {
             sheet.write_string(row, 5, &end_time)?;
         }
 
-        // Add total duration at the end
+        // Add total TimeDelta at the end
         if let Some(t) = self.total_duration {
             let total_row = (self.tracks.len() + 1) as RowNum;
             let formatted_duration = utils::formatted_duration(t);
@@ -395,7 +395,7 @@ impl Playlist {
             log::trace!("{:#?}", row);
         }
 
-        // Drop file extension from file name
+        // Drop the file extension from file name
         let name = path
             .with_extension("")
             .file_name()
@@ -669,7 +669,7 @@ impl Playlist {
         tracks
             .iter()
             .map(|t| {
-                utils::formatted_duration(t.play_time.unwrap_or(Duration::seconds(0)))
+                utils::formatted_duration(t.play_time.unwrap_or(TimeDelta::try_seconds(0).unwrap()))
                     .chars()
                     .count()
             })
@@ -760,10 +760,11 @@ impl Playlist {
                         .map(|n| NaiveDateTime::new(start_date, n));
 
                     let play_time = match row.get("playtime") {
-                        Some(t) => NaiveTime::parse_from_str(t, "%H:%M:%S").ok().map(|n| {
-                            Duration::hours(i64::from(n.hour()))
-                                + Duration::minutes(i64::from(n.minute()))
-                                + Duration::seconds(i64::from(n.second()))
+                        Some(t) => NaiveTime::parse_from_str(t, "%H:%M:%S").ok().and_then(|n| {
+                            let hours = TimeDelta::try_hours(i64::from(n.hour()))?;
+                            let minutes = TimeDelta::try_minutes(i64::from(n.minute()))?;
+                            let seconds = TimeDelta::try_seconds(i64::from(n.second()))?;
+                            Some(hours + minutes + seconds)
                         }),
                         None => start_time.and_then(|start| end_time.map(|end| end - start)),
                     };

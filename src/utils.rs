@@ -1,16 +1,16 @@
-use crate::track::Track;
-
-use anyhow::anyhow;
-use anyhow::Result;
-use chrono::Duration;
-use strum::EnumIter;
-use strum_macros::Display;
-
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::String;
+
+use anyhow::anyhow;
+use anyhow::Result;
+use chrono::TimeDelta;
+use strum::EnumIter;
+use strum_macros::Display;
+
+use crate::track::Track;
 
 /// Playlist file type
 #[derive(Debug, PartialEq, EnumIter, Display)]
@@ -30,7 +30,7 @@ pub enum OutputFormat {
 /// Output formatting style for playlist printing
 #[derive(Default, Debug, PartialEq, Display)]
 pub enum FormattingStyle {
-    /// Basic formatting, for example for sharing playlist text online
+    /// Basic formatting for sharing playlist text online
     Basic,
     /// Basic formatting but with track numbers
     Numbered,
@@ -42,7 +42,7 @@ pub enum FormattingStyle {
 /// Which DJ software is the playlist from.
 ///
 /// Each software has its own formatting style.
-/// Formatted means it was already processed by this program.
+/// `Formatted` means it was already processed by this program.
 #[derive(Debug, PartialEq, Display)]
 pub enum PlaylistType {
     Rekordbox,
@@ -83,11 +83,10 @@ pub fn append_extension_to_path(path: PathBuf, extension: impl AsRef<OsStr>) -> 
 }
 
 /// Get total playtime for a list of tracks
-pub fn get_total_playtime(tracks: &[Track]) -> Option<Duration> {
-    let mut sum = Duration::seconds(0);
+pub fn get_total_playtime(tracks: &[Track]) -> Option<TimeDelta> {
+    let mut sum = TimeDelta::try_seconds(0)?;
     for track in tracks.iter() {
         if let Some(duration) = track.play_time {
-            // chrono::Duration does not implement AddAssign or sum() :(
             sum += duration;
         }
     }
@@ -99,7 +98,7 @@ pub fn get_total_playtime(tracks: &[Track]) -> Option<Duration> {
 }
 
 /// Format duration as a string either as H:MM:SS or MM:SS depending on the duration.
-pub fn formatted_duration(duration: Duration) -> String {
+pub fn formatted_duration(duration: TimeDelta) -> String {
     let hours = duration.num_hours();
     let minutes = duration.num_minutes();
     let seconds = duration.num_seconds();
@@ -127,6 +126,7 @@ impl FromStr for FileFormat {
     }
 }
 
+/// Convert string to `OutputFormat` enum
 impl FromStr for OutputFormat {
     type Err = anyhow::Error;
     fn from_str(input: &str) -> Result<OutputFormat> {
@@ -167,19 +167,19 @@ mod tests {
 
     #[test]
     fn test_formatted_duration() {
-        let duration = Duration::seconds(59);
+        let duration = TimeDelta::try_seconds(59).unwrap();
         assert_eq!(formatted_duration(duration), "0:59");
 
-        let duration = Duration::seconds(77);
+        let duration = TimeDelta::try_seconds(77).unwrap();
         assert_eq!(formatted_duration(duration), "1:17");
 
-        let duration = Duration::minutes(45);
+        let duration = TimeDelta::try_minutes(45).unwrap();
         assert_eq!(formatted_duration(duration), "45:00");
 
-        let duration = Duration::minutes(60);
+        let duration = TimeDelta::try_minutes(60).unwrap();
         assert_eq!(formatted_duration(duration), "1:00:00");
 
-        let duration = Duration::minutes(31) + Duration::seconds(33);
+        let duration = TimeDelta::try_minutes(31).unwrap() + TimeDelta::try_seconds(33).unwrap();
         assert_eq!(formatted_duration(duration), "31:33");
     }
 

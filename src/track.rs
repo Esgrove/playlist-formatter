@@ -1,21 +1,21 @@
-use chrono::{Duration, NaiveDateTime};
-
 use std::fmt;
 use std::ops::{Add, AddAssign};
 use std::string::String;
 
-/// Represents one played track
+use chrono::{NaiveDateTime, TimeDelta};
+
+/// Represents one played track.
 #[derive(Debug, Clone)]
 pub struct Track {
     pub artist: String,
     pub title: String,
     pub start_time: Option<NaiveDateTime>,
     pub end_time: Option<NaiveDateTime>,
-    pub play_time: Option<Duration>,
+    pub play_time: Option<TimeDelta>,
 }
 
 impl Track {
-    /// Create a simple track with only artist name and song title
+    /// Create a simple track with only artist name and song title.
     pub fn new(artist: String, title: String) -> Track {
         Track {
             artist,
@@ -32,7 +32,7 @@ impl Track {
         title: String,
         start_time: Option<NaiveDateTime>,
         end_time: Option<NaiveDateTime>,
-        play_time: Option<Duration>,
+        play_time: Option<TimeDelta>,
     ) -> Track {
         Track {
             artist,
@@ -55,9 +55,9 @@ impl Track {
     }
 }
 
-impl Add<Option<Duration>> for Track {
+impl Add<Option<TimeDelta>> for Track {
     type Output = Track;
-    fn add(self, duration: Option<Duration>) -> Track {
+    fn add(self, duration: Option<TimeDelta>) -> Track {
         let play_time = match self.play_time {
             Some(time) => match duration {
                 None => Some(time),
@@ -75,8 +75,8 @@ impl Add<Option<Duration>> for Track {
     }
 }
 
-impl AddAssign<Duration> for Track {
-    fn add_assign(&mut self, duration: Duration) {
+impl AddAssign<TimeDelta> for Track {
+    fn add_assign(&mut self, duration: TimeDelta) {
         if let Some(time) = self.play_time {
             self.play_time = Some(time + duration)
         } else {
@@ -85,8 +85,8 @@ impl AddAssign<Duration> for Track {
     }
 }
 
-impl AddAssign<Option<Duration>> for Track {
-    fn add_assign(&mut self, duration: Option<Duration>) {
+impl AddAssign<Option<TimeDelta>> for Track {
+    fn add_assign(&mut self, duration: Option<TimeDelta>) {
         if let Some(d) = duration {
             if let Some(time) = self.play_time {
                 self.play_time = Some(time + d)
@@ -97,9 +97,9 @@ impl AddAssign<Option<Duration>> for Track {
     }
 }
 
-impl Add<Duration> for Track {
+impl Add<TimeDelta> for Track {
     type Output = Track;
-    fn add(self, duration: Duration) -> Track {
+    fn add(self, duration: TimeDelta) -> Track {
         Track {
             artist: self.artist,
             title: self.title,
