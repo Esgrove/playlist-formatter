@@ -10,13 +10,13 @@ export REPO_ROOT
 # have some differences for example in the available command line options.
 case "$(uname -s)" in
     "Darwin")
-        export PLATFORM="mac"
+        export BASH_PLATFORM="mac"
         ;;
     "MINGW"*)
-        export PLATFORM="windows"
+        export BASH_PLATFORM="windows"
         ;;
     *)
-        export PLATFORM="linux"
+        export BASH_PLATFORM="linux"
         ;;
 esac
 
@@ -69,7 +69,7 @@ get_rust_executable_name() {
     if [ -z "$executable" ]; then
         executable=$(awk -F'=' '/\[package\]/,/name/ {if($1 ~ /name/) print $2}' Cargo.toml | tr -d ' "')
     fi
-    if [ "$PLATFORM" = windows ]; then
+    if [ "$BASH_PLATFORM" = windows ]; then
         executable="${executable}.exe"
     fi
     echo "$executable"
