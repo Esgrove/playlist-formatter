@@ -255,3 +255,5 @@ fabric.properties
 /*.txt
 /*.exe
 /*.csv
+
+!tests/files/
