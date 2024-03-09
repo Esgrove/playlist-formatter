@@ -20,7 +20,7 @@ use strum::IntoEnumIterator;
 
 use crate::track::Track;
 use crate::utils;
-use crate::utils::{FileFormat, FormattingStyle, PlaylistType};
+use crate::utils::{FileFormat, FormattingStyle, OutputFormat, PlaylistType};
 
 lazy_static! {
     static ref RE_DD_MM_YYYY: Regex =
@@ -57,10 +57,7 @@ impl Playlist {
     /// Print playlist information (but not the tracks themselves)
     pub fn print_info(&self) {
         println!("Playlist: {}", self.name.green());
-        println!(
-            "Filepath: {}",
-            self.file.canonicalize().unwrap_or(self.file.clone()).display()
-        );
+        println!("Filepath: {}", self.file.display());
         println!(
             "Format: {}, Type: {}, Date: {}",
             self.file_format.to_string().cyan(),
@@ -182,7 +179,7 @@ impl Playlist {
             |value| match value
                 .extension()
                 .and_then(OsStr::to_str)
-                .map_or(false, |ext| FileFormat::from_str(ext).is_ok())
+                .map_or(false, |ext| OutputFormat::from_str(ext).is_ok())
             {
                 true => value,
                 false => utils::append_extension_to_path(value, "csv"),
