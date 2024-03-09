@@ -176,21 +176,17 @@ impl Playlist {
         potential_path.map_or_else(
             || {
                 // If `potential_path` is `None`, use the default save directory.
-                let mut save_dir = self.default_save_dir();
+                let save_dir = self.default_save_dir();
                 log::info!("Using default save dir: {}", save_dir.display());
-                save_dir.push(self.file.with_extension("csv"));
-                save_dir
+                save_dir.join(&self.file)
             },
-            |value| {
-                log::info!("Saving to: {}", value.display());
-                match value
-                    .extension()
-                    .and_then(OsStr::to_str)
-                    .map_or(false, |ext| FileFormat::from_str(ext).is_ok())
-                {
-                    true => value,
-                    false => utils::append_extension_to_path(value, "csv"),
-                }
+            |value| match value
+                .extension()
+                .and_then(OsStr::to_str)
+                .map_or(false, |ext| FileFormat::from_str(ext).is_ok())
+            {
+                true => value,
+                false => utils::append_extension_to_path(value, "csv"),
             },
         )
     }
@@ -198,7 +194,7 @@ impl Playlist {
     /// Write playlist to given file.
     pub fn save_playlist_to_file(&self, filepath: Option<String>, overwrite_existing: bool) -> Result<()> {
         let path = self.get_output_file_path(filepath);
-        log::debug!("Saving to: {}", path.display());
+        log::info!("Saving to: {}", path.display());
         if path.is_file() {
             if !overwrite_existing {
                 log::error!("Output file already exists: {}", path.display());
