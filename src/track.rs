@@ -132,7 +132,7 @@ mod tests {
     use chrono::{NaiveDate, TimeDelta};
 
     #[test]
-    fn test_new_track() {
+    fn new_track() {
         let track = Track::new("Artist".to_string(), "Title".to_string());
         assert_eq!(track.artist, "Artist");
         assert_eq!(track.title, "Title");
@@ -142,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_track_with_time() {
+    fn new_track_with_time() {
         let start_time = NaiveDate::from_ymd_opt(2023, 1, 1)
             .unwrap()
             .and_hms_opt(12, 0, 0)
@@ -165,7 +165,29 @@ mod tests {
     }
 
     #[test]
-    fn test_lengths() {
+    fn equals() {
+        let start_time = NaiveDate::from_ymd_opt(2023, 1, 1)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap();
+        let end_time = NaiveDate::from_ymd_opt(2023, 1, 1)
+            .unwrap()
+            .and_hms_opt(13, 0, 0)
+            .unwrap();
+        let play_time = TimeDelta::try_minutes(2).unwrap();
+        let track1 = Track::new_with_time(
+            "Some Artist".to_string(),
+            "Song Title (Remix)".to_string(),
+            Some(start_time),
+            Some(end_time),
+            Some(play_time),
+        );
+        let track2 = Track::new("Some Artist".to_string(), "Song Title (Remix)".to_string());
+        assert_eq!(track1, track2);
+    }
+
+    #[test]
+    fn lengths() {
         let track = Track::new("Artist".to_string(), "Title".to_string());
         assert_eq!(track.artist_length(), 6);
         assert_eq!(track.title_length(), 5);

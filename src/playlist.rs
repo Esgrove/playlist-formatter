@@ -166,27 +166,36 @@ impl Playlist {
     /// Get output file path.
     pub fn get_output_file_path(&self, filepath: Option<String>, use_default_dir: bool) -> PathBuf {
         let default_save_dir = self.default_save_dir();
+
         let potential_path: Option<PathBuf> = filepath
             .map(|value| value.trim().to_string())
             .filter(|trimmed| !trimmed.is_empty())
             .map(PathBuf::from);
 
-        potential_path.map_or_else(
-            || {
-                // If `potential_path` is `None`, use the default save directory.
-                let save_dir = self.default_save_dir();
-                log::info!("Using default save dir: {}", save_dir.display());
-                save_dir.join(&self.file)
-            },
-            |value| match value
-                .extension()
-                .and_then(OsStr::to_str)
-                .map_or(false, |ext| OutputFormat::from_str(ext).is_ok())
-            {
-                true => value,
-                false => utils::append_extension_to_path(value, "csv"),
-            },
-        )
+        let output_path = if let Some(path) = potential_path {
+            let absolute_path = dunce::canonicalize(&path).unwrap_or(path);
+            if use_default_dir {
+                absolute_path
+                    .file_name()
+                    .map(|filename| default_save_dir.join(filename))
+                    .unwrap_or(absolute_path)
+            } else {
+                absolute_path
+            }
+        } else {
+            // If `potential_path` is `None`, use the default save directory.
+            log::debug!("Using default save path: {}", default_save_dir.display());
+            default_save_dir.join(&self.file)
+        };
+
+        match output_path
+            .extension()
+            .and_then(OsStr::to_str)
+            .map_or(false, |ext| OutputFormat::from_str(ext).is_ok())
+        {
+            true => output_path,
+            false => utils::append_extension_to_path(output_path, "csv"),
+        }
     }
 
     /// Write playlist to given file.

@@ -2,7 +2,7 @@
 
 [package]
 name = "playlist_formatter"
-version = "1.5.0"
+version = "1.5.1"
 authors = ["Akseli Lukkarila <esgrove@outlook.com>"]
 description = "DJ playlist formatting utility"
 edition = "2021"

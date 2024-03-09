@@ -5,7 +5,7 @@ mod track;
 mod utils;
 
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use chrono::Local;
@@ -13,7 +13,7 @@ use clap::Parser;
 use log::LevelFilter;
 
 use crate::playlist::Playlist;
-use crate::utils::{FormattingStyle, Level};
+use crate::utils::{CliConfig, FormattingStyle, Level};
 
 /// Command line arguments
 ///
@@ -55,6 +55,10 @@ struct Args {
     #[arg(short, long, help = "Use numbered print formatting style", conflicts_with = "basic")]
     numbered: bool,
 
+    /// Numbered formatting style
+    #[arg(short, long, help = "Don't print playlist")]
+    quiet: bool,
+
     /// Write playlist to file
     #[arg(
         short,
@@ -68,20 +72,31 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    // Parse command line arguments
     let args = Args::parse();
+    init_logger(&args.log);
+    let absolute_input_path = parse_input_path(&args.file)?;
+    let config = CliConfig::from_args(args);
+    let formatter = Playlist::new(&absolute_input_path)?;
 
-    // Get logging level to use
-    let log_level_filter = match args.log {
-        None => log::LevelFilter::Info,
-        Some(ref level) => level.to_log_filter(),
-    };
+    if config.style == FormattingStyle::Pretty {
+        formatter.print_info();
+    }
+    if !config.quiet {
+        formatter.print_playlist(&config.style);
+    }
+    if config.save {
+        formatter.save_playlist_to_file(config.output_path, config.force, config.default)?
+    }
 
-    init_logger(log_level_filter);
-    run_playlist_formatter_cli(args)
+    Ok(())
 }
 
-fn init_logger(log_level_filter: LevelFilter) {
+fn init_logger(log_level: &Option<Level>) {
+    // Get logging level to use
+    let log_level_filter = match log_level {
+        None => LevelFilter::Info,
+        Some(ref level) => level.to_log_filter(),
+    };
     // Init logger with timestamps
     env_logger::Builder::new()
         .format(|buf, record| {
@@ -99,46 +114,107 @@ fn init_logger(log_level_filter: LevelFilter) {
     log::debug!("Using log level: {}", log_level_filter);
 }
 
-/// Run playlist formatting based on command line arguments
-fn run_playlist_formatter_cli(args: Args) -> Result<()> {
-    let input_file = args.file.trim();
+fn parse_input_path(input: &str) -> Result<PathBuf> {
+    let input_file = input.trim();
     if input_file.is_empty() {
         anyhow::bail!("Empty input file");
     }
     let filepath = Path::new(input_file);
     if !filepath.is_file() {
         anyhow::bail!(
-            "file does not exist or is not accessible: '{}'",
+            "File does not exist or is not accessible: '{}'",
             dunce::simplified(filepath).display()
         );
     }
     let absolute_input_path = dunce::canonicalize(filepath)?;
-    log::debug!("Playlist file: {}", absolute_input_path.display());
+    log::info!("Playlist file: {}", absolute_input_path.display());
+    Ok(absolute_input_path)
+}
 
-    // formatting style to use
-    let style = if args.basic {
-        FormattingStyle::Basic
-    } else if args.numbered {
-        FormattingStyle::Numbered
-    } else {
-        FormattingStyle::Pretty
-    };
-    log::debug!("Formatting style: {style}");
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let formatter = Playlist::new(&absolute_input_path)?;
-    log::trace!("{:#?}", formatter);
-
-    if style == FormattingStyle::Pretty {
-        formatter.print_info();
+    #[test]
+    fn cli_config_basic() {
+        // Simulating "--basic"
+        let args = Args {
+            file: "playlist.txt".into(),
+            output: None,
+            default: false,
+            force: false,
+            log: None,
+            basic: true,
+            numbered: false,
+            quiet: false,
+            save: None,
+        };
+        let config = CliConfig::from_args(args);
+        assert_eq!(config.style, FormattingStyle::Basic);
+        assert_eq!(config.output_path, None);
     }
 
-    formatter.print_playlist(&style);
+    #[test]
+    fn cli_config_with_output_and_force() {
+        // Simulating "--output some/path --force"
+        let args = Args {
+            file: "playlist.txt".into(),
+            output: Some("some/path/playlist-2024".into()),
+            default: false,
+            force: true,
+            log: None,
+            basic: false,
+            numbered: false,
+            quiet: false,
+            save: None,
+        };
 
-    if let Some(save_path) = args.save {
-        formatter.save_playlist_to_file(save_path, args.force, args.default)?;
-    } else if args.output.is_some() {
-        formatter.save_playlist_to_file(args.output, args.force, args.default)?;
+        let config = CliConfig::from_args(args);
+
+        assert!(config.force);
+        assert!(config.save);
+        assert_eq!(config.output_path, Some("some/path/playlist-2024".into()));
     }
 
-    Ok(())
+    #[test]
+    fn cli_config_with_save() {
+        // Simulating "--save"
+        let args = Args {
+            file: "playlist.txt".into(),
+            output: None,
+            default: false,
+            force: false,
+            log: None,
+            basic: false,
+            numbered: false,
+            quiet: false,
+            save: Some(None),
+        };
+
+        let config = CliConfig::from_args(args);
+
+        assert!(config.save);
+        assert_eq!(config.output_path, None);
+    }
+
+    #[test]
+    fn cli_config_with_save_with_path() {
+        // Simulating "--save playlist1.csv"
+        let args = Args {
+            file: "playlist.txt".into(),
+            output: None,
+            default: false,
+            force: false,
+            log: None,
+            basic: false,
+            numbered: false,
+            quiet: false,
+            save: Some(Some("playlist1.csv".to_string())),
+        };
+
+        let config = CliConfig::from_args(args);
+
+        assert!(config.save);
+        assert_eq!(config.output_path, Some("playlist1.csv".to_string()));
+    }
 }

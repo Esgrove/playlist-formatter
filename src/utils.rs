@@ -11,16 +11,17 @@ use strum::EnumIter;
 use strum_macros::Display;
 
 use crate::track::Track;
+use crate::Args;
 
 /// Playlist file type
-#[derive(Debug, PartialEq, EnumIter, Display)]
+#[derive(Debug, Clone, PartialEq, EnumIter, Display)]
 pub enum FileFormat {
     Txt,
     Csv,
 }
 
 /// Export file type
-#[derive(Debug, PartialEq, EnumIter, Display)]
+#[derive(Debug, Clone, PartialEq, EnumIter, Display)]
 pub enum OutputFormat {
     Txt,
     Csv,
@@ -28,7 +29,7 @@ pub enum OutputFormat {
 }
 
 /// Output formatting style for playlist printing
-#[derive(Default, Debug, PartialEq, Display)]
+#[derive(Default, Debug, Clone, PartialEq, Display)]
 pub enum FormattingStyle {
     /// Basic formatting for sharing playlist text online
     Basic,
@@ -43,7 +44,7 @@ pub enum FormattingStyle {
 ///
 /// Each software has its own formatting style.
 /// `Formatted` means it was already processed by this program.
-#[derive(Debug, PartialEq, Display)]
+#[derive(Debug, Clone, PartialEq, Display)]
 pub enum PlaylistType {
     Rekordbox,
     Serato,
@@ -58,6 +59,49 @@ pub enum Level {
     Info,
     Warn,
     Error,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct CliConfig {
+    pub default: bool,
+    pub force: bool,
+    pub quiet: bool,
+    pub save: bool,
+    pub output_path: Option<String>,
+    pub style: FormattingStyle,
+}
+
+impl CliConfig {
+    /// Create config from command line args.
+    pub fn from_args(args: Args) -> Self {
+        let style = if args.basic {
+            FormattingStyle::Basic
+        } else if args.numbered {
+            FormattingStyle::Numbered
+        } else {
+            FormattingStyle::Pretty
+        };
+        log::debug!("Formatting style: {style}");
+
+        let (save, output_path) = if args.save.is_some() {
+            log::debug!("Save option specified");
+            (true, args.save.unwrap())
+        } else if args.output.is_some() {
+            log::debug!("Output path specified");
+            (true, args.output)
+        } else {
+            (false, None)
+        };
+
+        CliConfig {
+            force: args.force,
+            default: args.default,
+            quiet: args.quiet,
+            save,
+            output_path,
+            style,
+        }
+    }
 }
 
 impl Level {
@@ -184,13 +228,15 @@ mod tests {
     }
 
     #[test]
-    fn test_from_str_valid_format() {
+    fn file_format_valid_format() {
         assert_eq!(FileFormat::from_str("csv").unwrap(), FileFormat::Csv);
+        assert_eq!(FileFormat::from_str("CSV").unwrap(), FileFormat::Csv);
         assert_eq!(FileFormat::from_str("txt").unwrap(), FileFormat::Txt);
+        assert_eq!(FileFormat::from_str("TXT").unwrap(), FileFormat::Txt);
     }
 
     #[test]
-    fn from_str_unsupported_format() {
+    fn file_format_unsupported_format() {
         let result = FileFormat::from_str("mp3");
         assert!(
             result.is_err(),
@@ -203,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn from_str_empty_string() {
+    fn file_format_empty_string() {
         let result = FileFormat::from_str("");
         assert!(
             result.is_err(),
@@ -213,5 +259,15 @@ mod tests {
         if let Err(e) = result {
             assert_eq!(e.to_string(), "Can't convert empty string to file format");
         }
+    }
+
+    #[test]
+    fn output_format() {
+        assert_eq!(OutputFormat::from_str("csv").unwrap(), OutputFormat::Csv);
+        assert_eq!(OutputFormat::from_str("CSV").unwrap(), OutputFormat::Csv);
+        assert_eq!(OutputFormat::from_str("txt").unwrap(), OutputFormat::Txt);
+        assert_eq!(OutputFormat::from_str("TXT").unwrap(), OutputFormat::Txt);
+        assert_eq!(OutputFormat::from_str("xlsx").unwrap(), OutputFormat::Xlsx);
+        assert_eq!(OutputFormat::from_str("XLSX").unwrap(), OutputFormat::Xlsx);
     }
 }
