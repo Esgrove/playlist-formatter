@@ -31,7 +31,7 @@ lazy_static! {
 
 /// Holds imported playlist data
 #[derive(Debug)]
-pub(crate) struct Playlist {
+pub struct Playlist {
     pub date: Option<NaiveDateTime>,
     pub file_format: FileFormat,
     pub file: PathBuf,
@@ -48,8 +48,7 @@ pub(crate) struct Playlist {
 impl Playlist {
     /// Initialize playlist from given filepath
     pub fn new(file: &Path) -> Result<Playlist> {
-        let format = Self::playlist_format(file)?;
-        match format {
+        match Self::playlist_format(file)? {
             FileFormat::Csv => Self::read_csv(file),
             FileFormat::Txt => Self::read_txt(file),
         }
@@ -642,7 +641,7 @@ impl Playlist {
         path.filter(|p| p.is_dir())
     }
 
-    /// Get playlist format enum from file extension.
+    /// Get playlist format enum from the file extension.
     fn playlist_format(file: &Path) -> Result<FileFormat> {
         let extension: &str = match file.extension() {
             None => {

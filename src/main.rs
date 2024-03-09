@@ -99,13 +99,17 @@ fn init_logger(log_level_filter: LevelFilter) {
 fn run_playlist_formatter_cli(args: Args) -> Result<()> {
     let input_file = args.file.trim();
     if input_file.is_empty() {
-        anyhow::bail!("empty input file");
+        anyhow::bail!("Empty input file");
     }
     let filepath = Path::new(input_file);
     if !filepath.is_file() {
-        anyhow::bail!("file does not exist or is not accessible: '{}'", filepath.display());
+        anyhow::bail!(
+            "file does not exist or is not accessible: '{}'",
+            dunce::simplified(filepath).display()
+        );
     }
-    log::debug!("Playlist file: {}", filepath.display());
+    let absolute_input_path = dunce::canonicalize(filepath)?;
+    log::debug!("Playlist file: {}", absolute_input_path.display());
 
     // formatting style to use
     let style = if args.basic {
@@ -117,7 +121,7 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
     };
     log::debug!("Formatting style: {style}");
 
-    let formatter = Playlist::new(filepath)?;
+    let formatter = Playlist::new(&absolute_input_path)?;
     log::trace!("{:#?}", formatter);
 
     if style == FormattingStyle::Pretty {
