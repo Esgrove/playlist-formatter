@@ -1,5 +1,6 @@
 use std::cmp::max;
 use std::collections::BTreeMap;
+use std::env;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -163,7 +164,8 @@ impl Playlist {
     }
 
     /// Get output file path.
-    pub fn get_output_file_path(&self, filepath: Option<String>) -> PathBuf {
+    pub fn get_output_file_path(&self, filepath: Option<String>, use_default_dir: bool) -> PathBuf {
+        let default_save_dir = self.default_save_dir();
         let potential_path: Option<PathBuf> = filepath
             .map(|value| value.trim().to_string())
             .filter(|trimmed| !trimmed.is_empty())
@@ -188,8 +190,13 @@ impl Playlist {
     }
 
     /// Write playlist to given file.
-    pub fn save_playlist_to_file(&self, filepath: Option<String>, overwrite_existing: bool) -> Result<()> {
-        let path = self.get_output_file_path(filepath);
+    pub fn save_playlist_to_file(
+        &self,
+        filepath: Option<String>,
+        overwrite_existing: bool,
+        use_default_dir: bool,
+    ) -> Result<()> {
+        let path = self.get_output_file_path(filepath, use_default_dir);
         log::info!("Saving to: {}", path.display());
         if path.is_file() {
             if !overwrite_existing {
@@ -220,21 +227,19 @@ impl Playlist {
     /// After that, it will try the get the directory of the input file.
     /// Otherwise, returns an empty path so the file will go to the current working directory.
     fn default_save_dir(&self) -> PathBuf {
-        if let Some(dir) = Playlist::dropbox_save_dir() {
-            dir
-        } else {
-            let default_dir = match self.file.canonicalize() {
-                Ok(path) => match path.parent() {
-                    Some(parent) => parent.to_path_buf(),
-                    None => PathBuf::new(),
-                },
-                Err(error) => {
+        Playlist::dropbox_save_dir().unwrap_or_else(|| {
+            dunce::canonicalize(&self.file)
+                .map(|path| {
+                    path.parent().map_or_else(
+                        || env::current_dir().unwrap_or_else(|_| PathBuf::new()),
+                        |parent| parent.to_path_buf(),
+                    )
+                })
+                .unwrap_or_else(|error| {
                     log::error!("Failed to resolve full path to input file: {}", error);
-                    PathBuf::new()
-                }
-            };
-            default_dir
-        }
+                    env::current_dir().unwrap_or_else(|_| PathBuf::new())
+                })
+        })
     }
 
     /// Write tracks to CSV file
@@ -628,10 +633,10 @@ impl Playlist {
     /// Get DJ playlist directory path in Dropbox if it exists
     fn dropbox_save_dir() -> Option<PathBuf> {
         let path = if cfg!(target_os = "windows") {
-            Some(PathBuf::from("D:\\Dropbox\\DJ\\PLAYLIST"))
+            Some(dunce::simplified(Path::new("D:\\Dropbox\\DJ\\PLAYLIST")).to_path_buf())
         } else if let Some(mut home) = home_dir() {
             home.push("Dropbox/DJ/PLAYLIST");
-            Some(home)
+            Some(dunce::simplified(&home).to_path_buf())
         } else {
             None
         };

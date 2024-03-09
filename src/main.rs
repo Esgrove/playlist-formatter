@@ -36,6 +36,10 @@ struct Args {
     output: Option<String>,
 
     /// Overwrite an existing output file
+    #[arg(short, long, help = "Use default save dir")]
+    default: bool,
+
+    /// Overwrite an existing output file
     #[arg(short, long, help = "Overwrite an existing file")]
     force: bool,
 
@@ -131,9 +135,9 @@ fn run_playlist_formatter_cli(args: Args) -> Result<()> {
     formatter.print_playlist(&style);
 
     if let Some(save_path) = args.save {
-        formatter.save_playlist_to_file(save_path, args.force)?;
+        formatter.save_playlist_to_file(save_path, args.force, args.default)?;
     } else if args.output.is_some() {
-        formatter.save_playlist_to_file(args.output, args.force)?;
+        formatter.save_playlist_to_file(args.output, args.force, args.default)?;
     }
 
     Ok(())
