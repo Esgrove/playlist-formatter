@@ -16,7 +16,6 @@ cargo install --path "$REPO_ROOT"
 
 executable=$(get_rust_executable_name)
 if [ -z "$(command -v "$executable")" ]; then
-    print_error_and_exit "Binary not found. Is the Cargo install directory in path?"
+    print_error_and_exit "Binary $executable not found. Is the Cargo install directory in path?"
 fi
-
 echo "$($executable --version) from $(which "$executable")"
