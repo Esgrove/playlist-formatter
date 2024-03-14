@@ -1,11 +1,15 @@
 #![warn(clippy::cargo)]
 
+mod formatted;
 mod playlist;
+mod rekordbox;
+mod serato;
 mod track;
 mod utils;
 
 #[cfg(test)]
 mod playlist_tests;
+mod types;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -14,9 +18,9 @@ use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
 use log::LevelFilter;
+use types::{CliConfig, FormattingStyle, Level};
 
 use crate::playlist::Playlist;
-use crate::utils::{CliConfig, FormattingStyle, Level};
 
 /// Command line arguments
 ///

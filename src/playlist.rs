@@ -9,26 +9,15 @@ use std::str::FromStr;
 use std::string::String;
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, Timelike};
+use chrono::{NaiveDateTime, TimeDelta};
 use colored::Colorize;
 use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
-use home::home_dir;
-use lazy_static::lazy_static;
-use regex::Regex;
 use rust_xlsxwriter::{Format, FormatAlign, FormatBorder, RowNum, Workbook};
-use strum::IntoEnumIterator;
 
 use crate::track::Track;
-use crate::utils;
-use crate::utils::{FileFormat, FormattingStyle, OutputFormat, PlaylistType};
-
-lazy_static! {
-    static ref RE_DD_MM_YYYY: Regex =
-        Regex::new(r"(\d{1,2})\.(\d{1,2})\.(\d{4})").expect("Failed to create regex pattern for dd.mm.yyyy");
-    static ref RE_YYYY_MM_DD: Regex =
-        Regex::new(r"(\d{4})\.(\d{1,2})\.(\d{1,2})").expect("Failed to create regex pattern for yyyy.mm.dd");
-}
+use crate::types::{FileFormat, FormattingStyle, OutputFormat, PlaylistType};
+use crate::{formatted, rekordbox, serato, utils};
 
 /// Holds imported playlist data
 #[derive(Debug)]
@@ -41,15 +30,15 @@ pub struct Playlist {
     pub total_duration: Option<TimeDelta>,
     pub tracks: Vec<Track>,
     // helpers for formatting
-    max_artist_length: usize,
-    max_title_length: usize,
-    max_playtime_length: usize,
+    pub max_artist_length: usize,
+    pub max_title_length: usize,
+    pub max_playtime_length: usize,
 }
 
 impl Playlist {
     /// Initialize playlist from given filepath
     pub fn new(file: &Path) -> Result<Playlist> {
-        match Self::playlist_format(file)? {
+        match utils::playlist_format(file)? {
             FileFormat::Csv => Self::read_csv(file),
             FileFormat::Txt => Self::read_txt(file),
         }
@@ -236,7 +225,7 @@ impl Playlist {
     /// After that, it will try the get the directory of the input file.
     /// Otherwise, returns an empty path so the file will go to the current working directory.
     fn default_save_dir(&self) -> PathBuf {
-        Playlist::dropbox_save_dir().unwrap_or_else(|| {
+        utils::dropbox_save_dir().unwrap_or_else(|| {
             dunce::canonicalize(&self.file)
                 .map(|path| {
                     path.parent().map_or_else(
@@ -413,11 +402,11 @@ impl Playlist {
         // Check playlist type
         if header_map.contains_key("name") {
             log::debug!("Detected Serato TXT");
-            Playlist::read_serato_txt(path, name, &header_map, &data)
+            serato::read_serato_txt(path, name, &header_map, &data)
         } else if header_map.contains_key("#") {
             // Rekordbox txt: first line contains headers, line starts with '#'.
             log::debug!("Detected Rekordbox TXT");
-            Playlist::read_rekordbox_txt(path, name, &header_map, &data)
+            rekordbox::read_rekordbox_txt(path, name, &header_map, &data)
         } else {
             anyhow::bail!("Input file does not seem to be a valid Serato or Rekordbox txt playlist");
         }
@@ -448,68 +437,20 @@ impl Playlist {
             log::trace!("{:?}", row);
         }
 
-        let formatted_fields = ["artist", "title"];
-        let formatted_csv: bool = formatted_fields.into_iter().all(|field| header_map.contains_key(field));
-        if formatted_csv {
-            // this is an already-formatted CSV
-            Self::read_formatted_csv(path, data)
+        // Check if this is an already-formatted CSV
+        let formatted_fields = ["Artist", "", "Song"];
+        if formatted_fields.into_iter().all(|field| header_map.contains_key(field)) {
+            formatted::read_formatted_csv(path, data)
         } else {
-            // this should be a Serato CSV
+            // This should be a Serato CSV
             let required_serato_fields = ["name", "artist"];
             for field in required_serato_fields {
                 if !header_map.contains_key(field) {
                     anyhow::bail!("Serato CSV missing required field: '{}'", field)
                 }
             }
-            Self::read_serato_csv(path, data)
+            serato::read_serato_csv(path, data)
         }
-    }
-
-    /// Read a formatted CSV playlist file.
-    fn read_formatted_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> Result<Playlist> {
-        // TODO: fix data reading
-        let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
-        let tracks = Self::parse_serato_tracks_from_data(&data, playlist_date);
-        let total_duration = utils::get_total_playtime(&tracks);
-        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-        let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
-
-        Ok(Playlist {
-            date: playlist_date,
-            file: PathBuf::from(path),
-            file_format: FileFormat::Csv,
-            name: playlist_name,
-            playlist_type: PlaylistType::Formatted,
-            tracks,
-            max_artist_length,
-            max_title_length,
-            max_playtime_length,
-            total_duration,
-        })
-    }
-
-    /// Read a Serato CSV playlist file.
-    fn read_serato_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> Result<Playlist> {
-        let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
-        let tracks = Self::parse_serato_tracks_from_data(&data, playlist_date);
-        let total_duration = utils::get_total_playtime(&tracks);
-        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-        let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
-
-        Ok(Playlist {
-            date: playlist_date,
-            file: PathBuf::from(path),
-            file_format: FileFormat::Csv,
-            name: playlist_name,
-            playlist_type: PlaylistType::Serato,
-            tracks,
-            max_artist_length,
-            max_title_length,
-            max_playtime_length,
-            total_duration,
-        })
     }
 
     /// Map track data to a dictionary (header key: track value).
@@ -531,162 +472,10 @@ impl Playlist {
             .collect()
     }
 
-    /// Parse first row data from a Serato playlist.
-    ///
-    /// This row should contain the playlist name and start datetime.
-    fn parse_serato_playlist_info(data: &BTreeMap<String, String>) -> (String, Option<NaiveDateTime>) {
-        let playlist_name = match data.get("name") {
-            None => String::new(),
-            Some(n) => n.to_string(),
-        };
-        // timestamp, for example "10.01.2019, 20.00.00 EET"
-        let mut playlist_date = match data.get("start time") {
-            None => None,
-            Some(time) => NaiveDateTime::parse_from_str(time, "%d.%m.%Y, %H.%M.%S %Z").ok(),
-        };
-        if playlist_date.is_none() && !playlist_name.is_empty() {
-            playlist_date = Self::extract_datetime_from_name(&playlist_name);
-        }
-        (playlist_name, playlist_date)
-    }
-
-    /// Read data from a Serato txt playlist.
-    fn read_serato_txt(
-        path: &Path,
-        name: String,
-        header: &BTreeMap<String, usize>,
-        data: &[BTreeMap<String, String>],
-    ) -> Result<Playlist> {
-        let required_fields = ["artist", "name"];
-        for field in required_fields {
-            if !header.contains_key(field) {
-                anyhow::bail!("Serato TXT missing required field: '{}'", field)
-            }
-        }
-
-        let (playlist_name, playlist_date) = Self::parse_serato_playlist_info(&data[0]);
-        let name = if playlist_name.is_empty() { name } else { playlist_name };
-        let date = if playlist_date.is_none() {
-            Self::extract_datetime_from_name(&name)
-        } else {
-            playlist_date
-        };
-        let tracks = Self::parse_serato_tracks_from_data(data, playlist_date);
-        let total_duration = utils::get_total_playtime(&tracks);
-        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-        let max_playtime_length: usize = Self::get_max_playtime_length(&tracks);
-
-        Ok(Playlist {
-            date,
-            file: PathBuf::from(path),
-            file_format: FileFormat::Txt,
-            name,
-            playlist_type: PlaylistType::Serato,
-            tracks,
-            max_artist_length,
-            max_title_length,
-            max_playtime_length,
-            total_duration,
-        })
-    }
-
-    /// Read data from a Rekordbox txt playlist.
-    fn read_rekordbox_txt(
-        path: &Path,
-        name: String,
-        header: &BTreeMap<String, usize>,
-        data: &[BTreeMap<String, String>],
-    ) -> Result<Playlist> {
-        let required_fields = ["Artist", "Track Title"];
-        for field in required_fields {
-            if !header.contains_key(field) {
-                anyhow::bail!("Rekordbox TXT missing required field: '{}'", field)
-            }
-        }
-
-        let date = Self::extract_datetime_from_name(&name);
-
-        // Rekordbox does not have any start or play time info :(
-        let mut tracks: Vec<Track> = {
-            data.iter()
-                .map(|row| {
-                    Track::new(
-                        row.get(required_fields[0]).unwrap().to_string(),
-                        row.get(required_fields[1]).unwrap().to_string(),
-                    )
-                })
-                .collect()
-        };
-
-        // Remove consecutive duplicates
-        tracks.dedup();
-
-        let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-        let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
-
-        Ok(Playlist {
-            date,
-            file: PathBuf::from(path),
-            file_format: FileFormat::Txt,
-            name,
-            playlist_type: PlaylistType::Rekordbox,
-            tracks,
-            max_artist_length,
-            max_title_length,
-            max_playtime_length: 0,
-            total_duration: None,
-        })
-    }
-
-    /// Get DJ playlist directory path in Dropbox if it exists
-    fn dropbox_save_dir() -> Option<PathBuf> {
-        let path = if cfg!(target_os = "windows") {
-            Some(dunce::simplified(Path::new("D:\\Dropbox\\DJ\\PLAYLIST")).to_path_buf())
-        } else if let Some(mut home) = home_dir() {
-            home.push("Dropbox/DJ/PLAYLIST");
-            Some(dunce::simplified(&home).to_path_buf())
-        } else {
-            None
-        };
-        path.filter(|p| p.is_dir())
-    }
-
-    /// Get playlist format enum from the file extension.
-    fn playlist_format(file: &Path) -> Result<FileFormat> {
-        let extension: &str = match file.extension() {
-            None => {
-                anyhow::bail!(
-                    "Input file has no file extension: '{}'. Supported file types are: {}",
-                    file.display(),
-                    FileFormat::iter()
-                        .map(|f| f.to_string())
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                )
-            }
-            Some(ext) => ext.to_str().context("Failed to parse file extension")?,
-        };
-        FileFormat::from_str(extension)
-    }
-
-    /// Get the longest formatted track playtime length in number of chars.
-    fn get_max_playtime_length(tracks: &[Track]) -> usize {
-        tracks
-            .iter()
-            .map(|t| {
-                utils::formatted_duration(t.play_time.unwrap_or(TimeDelta::try_seconds(0).unwrap()))
-                    .chars()
-                    .count()
-            })
-            .max()
-            .unwrap_or(0)
-    }
-
     /// Split txt content string to lines, and each line to separate items
-    fn read_txt_lines(dest: &mut str) -> Vec<Vec<String>> {
+    fn read_txt_lines(text: &mut str) -> Vec<Vec<String>> {
         // Convert to lines and split each line from tab. This handles Rekordbox data.
-        let initial_lines: Vec<Vec<String>> = dest
+        let initial_lines: Vec<Vec<String>> = text
             .lines()
             .map(|s| s.split('\t').map(|l| l.trim().to_string()).collect())
             .collect();
@@ -743,81 +532,5 @@ impl Playlist {
         } else {
             initial_lines
         }
-    }
-
-    /// Parse Serato track data from dictionary
-    fn parse_serato_tracks_from_data(
-        data: &[BTreeMap<String, String>],
-        playlist_date: Option<NaiveDateTime>,
-    ) -> Vec<Track> {
-        let start_date = playlist_date.unwrap_or_default().date();
-        let initial_tracks: Vec<Track> = {
-            data[1..]
-                .iter()
-                .map(|row| {
-                    let start_time: Option<NaiveDateTime> = row
-                        .get("start time")
-                        .and_then(|t| NaiveTime::parse_from_str(t, "%H.%M.%S %Z").ok())
-                        .map(|n| NaiveDateTime::new(start_date, n));
-
-                    let end_time: Option<NaiveDateTime> = row
-                        .get("end time")
-                        .and_then(|t| NaiveTime::parse_from_str(t, "%H.%M.%S %Z").ok())
-                        .map(|n| NaiveDateTime::new(start_date, n));
-
-                    let play_time = match row.get("playtime") {
-                        Some(t) => NaiveTime::parse_from_str(t, "%H:%M:%S").ok().and_then(|n| {
-                            let hours = TimeDelta::try_hours(i64::from(n.hour()))?;
-                            let minutes = TimeDelta::try_minutes(i64::from(n.minute()))?;
-                            let seconds = TimeDelta::try_seconds(i64::from(n.second()))?;
-                            Some(hours + minutes + seconds)
-                        }),
-                        None => start_time.and_then(|start| end_time.map(|end| end - start)),
-                    };
-                    Track::new_with_time(
-                        row.get("artist").unwrap_or(&"".to_string()).to_string(),
-                        row.get("name").unwrap_or(&"".to_string()).to_string(),
-                        start_time,
-                        end_time,
-                        play_time,
-                    )
-                })
-                .collect()
-        };
-
-        // Remove consecutive duplicates
-        let mut index: usize = 0;
-        let mut tracks: Vec<Track> = vec![initial_tracks[0].clone()];
-        for track in initial_tracks[1..].iter() {
-            let previous_track = &tracks[index];
-            if *previous_track == *track {
-                // duplicate track -> add playtime to previous and skip
-                tracks[index] += track.play_time;
-                tracks[index].end_time = track.end_time;
-            } else {
-                // new track, append to playlist
-                tracks.push(track.clone());
-                index += 1;
-            }
-        }
-        tracks
-    }
-
-    fn extract_datetime_from_name(input: &str) -> Option<NaiveDateTime> {
-        if let Some(caps) = RE_DD_MM_YYYY.captures(input) {
-            let day = caps.get(1)?.as_str().parse::<u32>().ok()?;
-            let month = caps.get(2)?.as_str().parse::<u32>().ok()?;
-            let year = caps.get(3)?.as_str().parse::<i32>().ok()?;
-            let date = NaiveDate::from_ymd_opt(year, month, day)?;
-            return date.and_hms_opt(0, 0, 0);
-        }
-        if let Some(caps) = RE_YYYY_MM_DD.captures(input) {
-            let year = caps.get(1)?.as_str().parse::<i32>().ok()?;
-            let month = caps.get(2)?.as_str().parse::<u32>().ok()?;
-            let day = caps.get(3)?.as_str().parse::<u32>().ok()?;
-            let date = NaiveDate::from_ymd_opt(year, month, day)?;
-            return date.and_hms_opt(0, 0, 0);
-        }
-        None
     }
 }
