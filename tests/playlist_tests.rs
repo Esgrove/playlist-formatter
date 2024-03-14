@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use lazy_static::lazy_static;
 
-use crate::playlist::Playlist;
-use crate::types::{FileFormat, PlaylistType};
+use playlist_formatter::playlist::Playlist;
+use playlist_formatter::types::{FileFormat, PlaylistType};
 
 lazy_static! {
     /// Path to the `tests/files` directory.

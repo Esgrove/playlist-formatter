@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 
 use chrono::{NaiveDateTime, NaiveTime, TimeDelta, Timelike};
 
-use crate::playlist::Playlist;
-use crate::track::Track;
-use crate::types::{FileFormat, PlaylistType};
-use crate::{formatted, utils};
+use super::playlist::Playlist;
+use super::track::Track;
+use super::types::{FileFormat, PlaylistType};
+use super::{formatted, utils};
 
 /// Read a formatted CSV playlist file.
 pub fn read_formatted_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> anyhow::Result<Playlist> {

@@ -12,8 +12,8 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use strum::IntoEnumIterator;
 
-use crate::track::Track;
-use crate::types::FileFormat;
+use super::track::Track;
+use super::types::FileFormat;
 
 lazy_static! {
     static ref RE_DD_MM_YYYY: Regex =
@@ -127,7 +127,7 @@ pub fn playlist_format(file: &Path) -> Result<FileFormat> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::*;
+    use super::*;
 
     #[test]
     fn test_append_extension_to_path() {

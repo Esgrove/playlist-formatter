@@ -3,8 +3,6 @@ use strum_macros::{Display, EnumIter};
 
 use std::str::FromStr;
 
-use crate::Args;
-
 /// Playlist file type
 #[derive(Debug, Clone, PartialEq, EnumIter, Display)]
 pub enum FileFormat {
@@ -20,18 +18,6 @@ pub enum OutputFormat {
     Xlsx,
 }
 
-/// Output formatting style for playlist printing
-#[derive(Default, Debug, Clone, PartialEq, Display)]
-pub enum FormattingStyle {
-    /// Basic formatting for sharing playlist text online
-    Basic,
-    /// Basic formatting but with track numbers
-    Numbered,
-    /// Pretty formatting for human readable formatted CLI output
-    #[default]
-    Pretty,
-}
-
 /// Which DJ software is the playlist from.
 ///
 /// Each software has its own formatting style.
@@ -41,71 +27,6 @@ pub enum PlaylistType {
     Rekordbox,
     Serato,
     Formatted,
-}
-
-/// Logging level
-#[derive(clap::ValueEnum, Clone, Debug, Display)]
-pub enum Level {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    Error,
-}
-
-#[derive(Default, Debug, Clone)]
-pub struct CliConfig {
-    pub default: bool,
-    pub force: bool,
-    pub quiet: bool,
-    pub save: bool,
-    pub output_path: Option<String>,
-    pub style: FormattingStyle,
-}
-
-impl CliConfig {
-    /// Create config from command line args.
-    pub fn from_args(args: Args) -> Self {
-        let style = if args.basic {
-            FormattingStyle::Basic
-        } else if args.numbered {
-            FormattingStyle::Numbered
-        } else {
-            FormattingStyle::Pretty
-        };
-        log::debug!("Formatting style: {style}");
-
-        let (save, output_path) = if args.save.is_some() {
-            log::debug!("Save option specified");
-            (true, args.save.unwrap())
-        } else if args.output.is_some() {
-            log::debug!("Output path specified");
-            (true, args.output)
-        } else {
-            (false, None)
-        };
-
-        CliConfig {
-            force: args.force,
-            default: args.default,
-            quiet: args.quiet,
-            save,
-            output_path,
-            style,
-        }
-    }
-}
-
-impl Level {
-    pub fn to_log_filter(&self) -> log::LevelFilter {
-        match self {
-            Level::Trace => log::LevelFilter::Trace,
-            Level::Debug => log::LevelFilter::Debug,
-            Level::Info => log::LevelFilter::Info,
-            Level::Warn => log::LevelFilter::Warn,
-            Level::Error => log::LevelFilter::Error,
-        }
-    }
 }
 
 /// Convert string to `FileFormat` enum
@@ -137,7 +58,7 @@ impl FromStr for OutputFormat {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{FileFormat, OutputFormat};
+    use super::{FileFormat, OutputFormat};
     use std::str::FromStr;
 
     #[test]

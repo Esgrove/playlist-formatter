@@ -15,9 +15,9 @@ use csv::Reader;
 use encoding_rs_io::DecodeReaderBytes;
 use rust_xlsxwriter::{Format, FormatAlign, FormatBorder, RowNum, Workbook};
 
-use crate::track::Track;
-use crate::types::{FileFormat, FormattingStyle, OutputFormat, PlaylistType};
-use crate::{formatted, rekordbox, serato, utils};
+use super::track::Track;
+use super::types::{FileFormat, OutputFormat, PlaylistType};
+use super::{formatted, rekordbox, serato, utils};
 
 /// Holds imported playlist data
 #[derive(Debug)]
@@ -67,24 +67,15 @@ impl Playlist {
         println!("\n");
     }
 
-    /// Print playlist with the given formatting style.
-    pub fn print_tracks(&self, style: &FormattingStyle) {
-        match style {
-            FormattingStyle::Basic => self.print_simple_playlist(),
-            FormattingStyle::Numbered => self.print_numbered_playlist(),
-            FormattingStyle::Pretty => self.print_pretty_playlist(),
-        }
-    }
-
     /// Print a simple playlist without any formatting.
-    fn print_simple_playlist(&self) {
+    pub fn print_simple_playlist(&self) {
         for track in &self.tracks {
             println!("{track}");
         }
     }
 
     /// Print a simple playlist with track numbers.
-    fn print_numbered_playlist(&self) {
+    pub fn print_numbered_playlist(&self) {
         let index_width = self.tracks.len().to_string().chars().count();
         for (index, track) in self.tracks.iter().enumerate() {
             println!("{:>0index_width$}: {}", index + 1, track, index_width = index_width);
@@ -92,7 +83,7 @@ impl Playlist {
     }
 
     /// Print a nicely formatted playlist.
-    fn print_pretty_playlist(&self) {
+    pub fn print_pretty_playlist(&self) {
         let index_width = self.tracks.len().to_string().chars().count();
         let playtime_width = if self.max_playtime_length > 0 {
             max(self.max_playtime_length, "PLAYTIME".to_string().chars().count())

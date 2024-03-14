@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::playlist::Playlist;
-use crate::track::Track;
-use crate::types::{FileFormat, PlaylistType};
-use crate::utils;
+use super::playlist::Playlist;
+use super::track::Track;
+use super::types::{FileFormat, PlaylistType};
+use super::utils;
 
 /// Read data from a Rekordbox txt playlist.
 pub fn read_rekordbox_txt(
