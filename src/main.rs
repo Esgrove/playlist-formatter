@@ -4,6 +4,9 @@ mod playlist;
 mod track;
 mod utils;
 
+#[cfg(test)]
+mod playlist_tests;
+
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -76,16 +79,16 @@ fn main() -> Result<()> {
     init_logger(&args.log);
     let absolute_input_path = parse_input_path(&args.file)?;
     let config = CliConfig::from_args(args);
-    let formatter = Playlist::new(&absolute_input_path)?;
+    let playlist = Playlist::new(&absolute_input_path)?;
 
     if config.style == FormattingStyle::Pretty {
-        formatter.print_info();
+        playlist.print_info();
     }
     if !config.quiet {
-        formatter.print_playlist(&config.style);
+        playlist.print_tracks(&config.style);
     }
     if config.save {
-        formatter.save_playlist_to_file(config.output_path, config.force, config.default)?
+        playlist.save_to_file(config.output_path, config.force, config.default)?
     }
 
     Ok(())

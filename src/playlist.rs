@@ -39,7 +39,7 @@ pub struct Playlist {
     pub name: String,
     pub playlist_type: PlaylistType,
     pub total_duration: Option<TimeDelta>,
-    tracks: Vec<Track>,
+    pub tracks: Vec<Track>,
     // helpers for formatting
     max_artist_length: usize,
     max_title_length: usize,
@@ -79,7 +79,7 @@ impl Playlist {
     }
 
     /// Print playlist with the given formatting style.
-    pub fn print_playlist(&self, style: &FormattingStyle) {
+    pub fn print_tracks(&self, style: &FormattingStyle) {
         match style {
             FormattingStyle::Basic => self.print_simple_playlist(),
             FormattingStyle::Numbered => self.print_numbered_playlist(),
@@ -199,7 +199,7 @@ impl Playlist {
     }
 
     /// Write playlist to given file.
-    pub fn save_playlist_to_file(
+    pub fn save_to_file(
         &self,
         filepath: Option<String>,
         overwrite_existing: bool,
