@@ -114,5 +114,6 @@ fn test_formatted_csv() -> anyhow::Result<()> {
     assert_eq!(playlist.file_format, FileFormat::Csv);
     assert_eq!(playlist.playlist_type, PlaylistType::Formatted);
     assert_eq!(playlist.date, None);
+    assert_eq!(playlist.tracks.len(), 24);
     Ok(())
 }

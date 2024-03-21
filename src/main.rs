@@ -1,5 +1,3 @@
-#![warn(clippy::cargo)]
-
 mod cli;
 
 use std::io::Write;

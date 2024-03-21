@@ -55,7 +55,7 @@ impl Playlist {
             if let Some(date) = self.date {
                 date.format("%Y.%m.%d %H:%M").to_string().magenta()
             } else {
-                "unknown".to_string().yellow()
+                "None".to_string().yellow()
             }
         );
         print!("Tracks: {}", self.tracks.len());
@@ -234,7 +234,7 @@ impl Playlist {
     /// Write tracks to CSV file
     fn write_csv_file(&self, filepath: &Path) -> Result<()> {
         let mut writer = csv::Writer::from_path(filepath)?;
-        writer.write_record(["artist", "", "title", "playtime", "start time", "end time"])?;
+        writer.write_record(["Artist", "", "Title", "Playtime", "Start time", "End time"])?;
         for track in &self.tracks {
             let duration = match track.play_time {
                 None => String::new(),
@@ -427,7 +427,7 @@ impl Playlist {
         }
 
         // Check if this is an already-formatted CSV
-        let formatted_fields = ["Artist", "", "Song"];
+        let formatted_fields = ["Artist", "", "Title"];
         if formatted_fields.into_iter().all(|field| header_map.contains_key(field)) {
             formatted::read_formatted_csv(path, data)
         } else {

@@ -18,6 +18,10 @@ pub struct Args {
     /// Playlist file to process (required)
     pub file: String,
 
+    /// Log level
+    #[arg(value_enum, short, long, help = "Log level", value_name = "LEVEL")]
+    pub log: Option<Level>,
+
     /// Optional output path to save playlist to
     output: Option<String>,
 
@@ -28,10 +32,6 @@ pub struct Args {
     /// Overwrite an existing output file
     #[arg(short, long, help = "Overwrite an existing file")]
     force: bool,
-
-    /// Log level
-    #[arg(value_enum, short, long, help = "Log level", value_name = "LEVEL")]
-    pub log: Option<Level>,
 
     /// Basic formatting style
     #[arg(short, long, help = "Use basic print formatting style", conflicts_with = "numbered")]

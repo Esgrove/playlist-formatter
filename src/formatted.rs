@@ -35,13 +35,15 @@ pub fn read_formatted_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> a
 pub fn parse_formatted_tracks_from_data(data: &[BTreeMap<String, String>]) -> Vec<Track> {
     let mut tracks: Vec<Track> = Vec::new();
     for row in data.iter() {
-        let artist = row.get("artist").unwrap_or(&"".to_string()).to_string();
-        let name = row.get("name").unwrap_or(&"".to_string()).to_string();
+        let artist = row.get("Artist").unwrap_or(&"".to_string()).to_string();
+        let name = row.get("Title").unwrap_or(&"".to_string()).to_string();
         // TODO: parse times
         // let playtime = row.get("playtime");
         // let start_time = row.get("start time");
         // let end_time = row.get("end time");
-        tracks.push(Track::new(artist, name))
+        if !artist.is_empty() && !name.is_empty() {
+            tracks.push(Track::new(artist, name))
+        }
     }
     tracks
 }
