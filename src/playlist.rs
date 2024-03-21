@@ -338,8 +338,6 @@ impl Playlist {
     fn read_txt(path: &Path) -> Result<Playlist> {
         let file = File::open(path)?;
         // Rekordbox encodes txt files in UTF-16 :(
-        // This implementation is far from ideal since it reads everything into a single string,
-        // but this way can easily convert to utf-8 using encoding_rs_io
         let mut decoder = DecodeReaderBytes::new(file);
         let mut dest = String::new();
         decoder.read_to_string(&mut dest)?;
@@ -474,52 +472,7 @@ impl Playlist {
         // Check if this is a Serato txt: Serato has a divider on the second line
         if initial_lines[1][0].chars().all(|c| c == '-') {
             // This is a Serato txt, need to do some extra parsing here...
-            let header_line: String = initial_lines[0][0].clone();
-            let column_names: Vec<String> = header_line
-                .replace("     ", "\t")
-                .split('\t')
-                .filter_map(|s| {
-                    let v = s.trim();
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(v.to_string())
-                    }
-                })
-                .collect();
-            // Get starting location of each column item on a line
-            let mut column_start_indices: Vec<usize> = column_names
-                .iter()
-                .map(|field| header_line.find(field).unwrap())
-                .collect();
-            // Extract each column item from the line, starting from the end of the line
-            column_start_indices.reverse();
-            let mut serato_lines: Vec<Vec<String>> = vec![];
-            for line in initial_lines {
-                // skip the divider lines
-                if line[0].chars().all(|c| c == '-') {
-                    continue;
-                }
-                let mut split_line: Vec<String> = vec![];
-                let mut remaining_line: String = line[0].to_string();
-                for index in &column_start_indices {
-                    // some lines do not contain data in all fields
-                    if *index >= remaining_line.len() {
-                        continue;
-                    }
-                    let (string_left, value) = remaining_line.split_at(*index);
-                    split_line.push(value.trim().to_string());
-                    remaining_line = string_left.to_string();
-                }
-                // Convert line item order since we extracted items in reverse order
-                split_line.reverse();
-                // pad line in case some columns did not have any data
-                while split_line.len() < column_names.len() {
-                    split_line.push(String::new());
-                }
-                serato_lines.push(split_line);
-            }
-            serato_lines
+            serato::read_serato_txt_lines(initial_lines)
         } else {
             initial_lines
         }
