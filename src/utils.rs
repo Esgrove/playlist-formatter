@@ -87,7 +87,7 @@ pub fn dropbox_save_dir() -> Option<PathBuf> {
         Some(dunce::simplified(Path::new("D:\\Dropbox\\DJ\\PLAYLIST")).to_path_buf())
     } else if let Some(mut home) = home_dir() {
         home.push("Dropbox/DJ/PLAYLIST");
-        Some(dunce::simplified(&home).to_path_buf())
+        Some(home.to_path_buf())
     } else {
         None
     };
@@ -125,9 +125,45 @@ pub fn playlist_format(file: &Path) -> Result<FileFormat> {
     FileFormat::from_str(extension)
 }
 
+/// Normalize path that might not exist yet.
+// Copied from Cargo
+// https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
+pub fn normalize_path(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ std::path::Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            std::path::Component::Prefix(..) => unreachable!(),
+            std::path::Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                ret.pop();
+            }
+            std::path::Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    ret
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_dropbox_save_dir() {
+        let result = dropbox_save_dir();
+        assert!(result.is_some());
+    }
 
     #[test]
     fn test_append_extension_to_path() {

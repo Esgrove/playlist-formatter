@@ -144,8 +144,14 @@ impl Playlist {
     }
 
     /// Get output file path.
-    pub fn get_output_file_path(&self, filepath: Option<String>, use_default_dir: bool) -> PathBuf {
+    pub fn get_output_file_path(
+        &self,
+        filepath: Option<String>,
+        use_default_dir: bool,
+        output_format: &OutputFormat,
+    ) -> PathBuf {
         let default_save_dir = self.default_save_dir();
+        log::debug!("Default save dir: {}", default_save_dir.display());
 
         let potential_path: Option<PathBuf> = filepath
             .map(|value| value.trim().to_string())
@@ -153,28 +159,29 @@ impl Playlist {
             .map(PathBuf::from);
 
         let output_path = if let Some(path) = potential_path {
-            let absolute_path = dunce::canonicalize(&path).unwrap_or(path);
             if use_default_dir {
-                absolute_path
-                    .file_name()
+                path.file_name()
                     .map(|filename| default_save_dir.join(filename))
-                    .unwrap_or(absolute_path)
+                    .unwrap_or(path)
             } else {
-                absolute_path
+                path
             }
         } else {
             // If `potential_path` is `None`, use the default save directory.
-            log::debug!("Using default save path: {}", default_save_dir.display());
             default_save_dir.join(&self.file)
         };
 
-        match output_path
+        log::debug!("Save path: {}", output_path.display());
+
+        let absolute_output_path = utils::normalize_path(&output_path);
+
+        match absolute_output_path
             .extension()
             .and_then(OsStr::to_str)
             .map_or(false, |ext| OutputFormat::from_str(ext).is_ok())
         {
-            true => output_path,
-            false => utils::append_extension_to_path(output_path, "csv"),
+            true => absolute_output_path,
+            false => utils::append_extension_to_path(absolute_output_path, output_format.to_string()),
         }
     }
 
@@ -184,8 +191,9 @@ impl Playlist {
         filepath: Option<String>,
         overwrite_existing: bool,
         use_default_dir: bool,
+        output_format: &OutputFormat,
     ) -> Result<()> {
-        let path = self.get_output_file_path(filepath, use_default_dir);
+        let path = self.get_output_file_path(filepath, use_default_dir, output_format);
         log::info!("Saving to: {}", path.display());
         if path.is_file() {
             if !overwrite_existing {

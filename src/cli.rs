@@ -1,55 +1,56 @@
 use clap::Parser;
 use strum_macros::Display;
 
-/// Command line arguments
-///
-/// Basic info is read from `Cargo.toml`
-/// See Clap `Derive` documentation for details:
-/// <https://docs.rs/clap/latest/clap/_derive/index.html>
+use playlist_formatter::types::OutputFormat;
+
+/// DJ playlist formatting utility
 #[derive(Parser)]
 #[command(
     author,
     version,
-    about = "DJ playlist formatting utility.",
+    about,
     long_about = "DJ playlist formatting utility. Reads raw playlist files and creates a nicely formatted version.",
     arg_required_else_help = true
 )]
 pub struct Args {
-    /// Playlist file to process (required)
+    /// Playlist file to process
     pub file: String,
-
-    /// Log level
-    #[arg(value_enum, short, long, help = "Log level", value_name = "LEVEL")]
-    pub log: Option<Level>,
 
     /// Optional output path to save playlist to
     output: Option<String>,
 
-    /// Overwrite an existing output file
-    #[arg(short, long, help = "Use default save dir")]
+    /// Log level
+    #[arg(value_enum, short, long, value_name = "LEVEL")]
+    pub log: Option<Level>,
+
+    /// Output format
+    #[arg(value_enum, short = 't', long = "type", value_name = "OUTPUT_FORMAT")]
+    pub output_format: Option<OutputFormat>,
+
+    /// Use default save directory
+    #[arg(short, long)]
     default: bool,
 
     /// Overwrite an existing output file
-    #[arg(short, long, help = "Overwrite an existing file")]
+    #[arg(short, long)]
     force: bool,
 
-    /// Basic formatting style
-    #[arg(short, long, help = "Use basic print formatting style", conflicts_with = "numbered")]
+    /// Use basic print formatting style
+    #[arg(short, long, conflicts_with = "numbered")]
     basic: bool,
 
-    /// Numbered formatting style
-    #[arg(short, long, help = "Use numbered print formatting style", conflicts_with = "basic")]
+    /// Use numbered print formatting style
+    #[arg(short, long, conflicts_with = "basic")]
     numbered: bool,
 
-    /// Numbered formatting style
-    #[arg(short, long, help = "Don't print playlist")]
+    /// Don't print playlist
+    #[arg(short, long)]
     quiet: bool,
 
-    /// Write playlist to file
+    /// Save formatted playlist to file
     #[arg(
         short,
         long,
-        help = "Save formatted playlist to file",
         long_help = "Save formatted playlist to file. This can be a name or path. Empty value will use default path",
         value_name = "OUTPUT_FILE",
         conflicts_with = "output"
@@ -85,8 +86,9 @@ pub struct CliConfig {
     pub force: bool,
     pub quiet: bool,
     pub save: bool,
-    pub output_path: Option<String>,
     pub style: FormattingStyle,
+    pub output_path: Option<String>,
+    pub output_format: OutputFormat,
 }
 
 impl CliConfig {
@@ -97,7 +99,7 @@ impl CliConfig {
         } else if args.numbered {
             FormattingStyle::Numbered
         } else {
-            FormattingStyle::Pretty
+            FormattingStyle::default()
         };
         log::debug!("Formatting style: {style}");
 
@@ -116,8 +118,9 @@ impl CliConfig {
             default: args.default,
             quiet: args.quiet,
             save,
-            output_path,
             style,
+            output_path,
+            output_format: args.output_format.unwrap_or_default(),
         }
     }
 }
@@ -151,6 +154,7 @@ mod tests {
             numbered: false,
             quiet: false,
             save: None,
+            output_format: None,
         };
         let config = CliConfig::from_args(args);
         assert_eq!(config.style, FormattingStyle::Basic);
@@ -170,6 +174,7 @@ mod tests {
             numbered: false,
             quiet: false,
             save: None,
+            output_format: None,
         };
 
         let config = CliConfig::from_args(args);
@@ -192,6 +197,7 @@ mod tests {
             numbered: false,
             quiet: false,
             save: Some(None),
+            output_format: None,
         };
 
         let config = CliConfig::from_args(args);
@@ -213,6 +219,7 @@ mod tests {
             numbered: false,
             quiet: false,
             save: Some(Some("playlist1.csv".to_string())),
+            output_format: None,
         };
 
         let config = CliConfig::from_args(args);

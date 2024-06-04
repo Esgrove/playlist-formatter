@@ -4,13 +4,12 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use chrono::Local;
 use clap::Parser;
 use log::LevelFilter;
 
-use playlist_formatter::playlist::Playlist;
-
 use crate::cli::{Args, CliConfig, FormattingStyle, Level};
+
+use playlist_formatter::playlist::Playlist;
 
 fn main() -> Result<()> {
     let args = Args::parse();
@@ -30,7 +29,7 @@ fn main() -> Result<()> {
         }
     }
     if config.save {
-        playlist.save_to_file(config.output_path, config.force, config.default)?
+        playlist.save_to_file(config.output_path, config.force, config.default, &config.output_format)?
     }
 
     Ok(())
@@ -44,14 +43,12 @@ fn init_logger(log_level: &Option<Level>) {
     };
     // Init logger with timestamps
     env_logger::Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}]: {}",
-                Local::now().format("%Y-%m-%d %H:%M:%S"),
-                record.level(),
-                record.args()
-            )
+        .format(|formatter, record| {
+            if record.level() <= LevelFilter::Debug || record.level() >= LevelFilter::Warn {
+                writeln!(formatter, "[{}]: {}", record.level(), record.args())
+            } else {
+                writeln!(formatter, "{}", record.args())
+            }
         })
         .filter(None, log_level_filter)
         .init();

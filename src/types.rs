@@ -1,7 +1,8 @@
-use anyhow::anyhow;
-use strum_macros::{Display, EnumIter};
-
 use std::str::FromStr;
+
+use anyhow::anyhow;
+use clap::ValueEnum;
+use strum_macros::{Display, EnumIter};
 
 /// Playlist file type
 #[derive(Debug, Clone, PartialEq, EnumIter, Display)]
@@ -11,10 +12,11 @@ pub enum FileFormat {
 }
 
 /// Export file type
-#[derive(Debug, Clone, PartialEq, EnumIter, Display)]
+#[derive(Debug, Clone, PartialEq, Default, EnumIter, Display, ValueEnum)]
 pub enum OutputFormat {
     Txt,
     Csv,
+    #[default]
     Xlsx,
 }
 
