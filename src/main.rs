@@ -43,11 +43,12 @@ fn init_logger(log_level: &Option<Level>) {
     };
     // Init logger with timestamps
     env_logger::Builder::new()
-        .format(|formatter, record| {
-            if record.level() <= LevelFilter::Debug || record.level() >= LevelFilter::Warn {
-                writeln!(formatter, "[{}]: {}", record.level(), record.args())
-            } else {
+        .format(|formatter, record| match record.level() {
+            log::Level::Info => {
                 writeln!(formatter, "{}", record.args())
+            }
+            _ => {
+                writeln!(formatter, "[{}]: {}", record.level(), record.args())
             }
         })
         .filter(None, log_level_filter)

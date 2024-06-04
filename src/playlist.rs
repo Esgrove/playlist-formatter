@@ -151,7 +151,6 @@ impl Playlist {
         output_format: &OutputFormat,
     ) -> PathBuf {
         let default_save_dir = self.default_save_dir();
-        log::debug!("Default save dir: {}", default_save_dir.display());
 
         let potential_path: Option<PathBuf> = filepath
             .map(|value| value.trim().to_string())
@@ -168,20 +167,16 @@ impl Playlist {
             }
         } else {
             // If `potential_path` is `None`, use the default save directory.
-            default_save_dir.join(&self.file)
+            default_save_dir.join(&self.name)
         };
 
-        log::debug!("Save path: {}", output_path.display());
-
-        let absolute_output_path = utils::normalize_path(&output_path);
-
-        match absolute_output_path
+        match output_path
             .extension()
             .and_then(OsStr::to_str)
             .map_or(false, |ext| OutputFormat::from_str(ext).is_ok())
         {
-            true => absolute_output_path,
-            false => utils::append_extension_to_path(absolute_output_path, output_format.to_string()),
+            true => output_path,
+            false => utils::append_extension_to_path(output_path, output_format.to_extension()),
         }
     }
 

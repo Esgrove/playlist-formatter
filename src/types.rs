@@ -58,6 +58,12 @@ impl FromStr for OutputFormat {
     }
 }
 
+impl OutputFormat {
+    pub fn to_extension(&self) -> String {
+        self.to_string().to_lowercase()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{FileFormat, OutputFormat};
