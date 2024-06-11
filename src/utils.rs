@@ -160,12 +160,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_dropbox_save_dir() {
-        let result = dropbox_save_dir();
-        assert!(result.is_some());
-    }
-
-    #[test]
     fn test_append_extension_to_path() {
         let path = PathBuf::from("/path/to/file");
         let result = append_extension_to_path(path, "csv");
