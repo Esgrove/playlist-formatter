@@ -22,7 +22,7 @@ dunce = "1.0.4"
 encoding_rs_io = "0.1.7"
 env_logger = "0.11.3"
 home = "0.5.9"
-lazy_static = "1.4.0"
+lazy_static = "1.5.0"
 log = "0.4.21"
 regex = "1.10.5"
 rust_xlsxwriter = { version = "0.66.0", features = ["chrono"] }
