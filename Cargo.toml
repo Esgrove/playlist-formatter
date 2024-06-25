@@ -25,7 +25,7 @@ home = "0.5.9"
 lazy_static = "1.4.0"
 log = "0.4.21"
 regex = "1.10.5"
-rust_xlsxwriter = { version = "0.66.0", features = ["chrono"] }
+rust_xlsxwriter = { version = "0.68.0", features = ["chrono"] }
 strum = { version = "0.26.2", features = ["derive"] }
 strum_macros = "0.26.4"
 titlecase = "3.2.0"
