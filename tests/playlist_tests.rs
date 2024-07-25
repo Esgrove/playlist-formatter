@@ -1,15 +1,14 @@
 use std::path::PathBuf;
+use std::sync::LazyLock;
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use lazy_static::lazy_static;
 
 use playlist_formatter::playlist::Playlist;
 use playlist_formatter::types::{FileFormat, PlaylistType};
 
-lazy_static! {
-    /// Path to the `tests/files` directory.
-    static ref TEST_FILES_DIR: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("files");
-}
+/// Path to the `tests/files` directory.
+static TEST_FILES_DIR: LazyLock<PathBuf> =
+    LazyLock::new(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("files"));
 
 #[test]
 fn test_dir() {

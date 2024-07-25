@@ -3,24 +3,24 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
+use std::sync::LazyLock;
 
 use anyhow::Context;
 use anyhow::Result;
 use chrono::{NaiveDate, NaiveDateTime, TimeDelta};
 use home::home_dir;
-use lazy_static::lazy_static;
 use regex::Regex;
 use strum::IntoEnumIterator;
 
 use super::track::Track;
 use super::types::FileFormat;
 
-lazy_static! {
-    static ref RE_DD_MM_YYYY: Regex =
-        Regex::new(r"(\d{1,2})\.(\d{1,2})\.(\d{4})").expect("Failed to create regex pattern for dd.mm.yyyy");
-    static ref RE_YYYY_MM_DD: Regex =
-        Regex::new(r"(\d{4})\.(\d{1,2})\.(\d{1,2})").expect("Failed to create regex pattern for yyyy.mm.dd");
-}
+static RE_DD_MM_YYYY: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(\d{1,2})\.(\d{1,2})\.(\d{4})").expect("Failed to create regex pattern for dd.mm.yyyy")
+});
+static RE_YYYY_MM_DD: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(\d{4})\.(\d{1,2})\.(\d{1,2})").expect("Failed to create regex pattern for yyyy.mm.dd")
+});
 
 /// Append extension to `PathBuf`, which is somehow missing completely from the standard lib :(
 ///
