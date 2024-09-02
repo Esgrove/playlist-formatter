@@ -5,37 +5,15 @@ Helper tool for formatting DJ playlists exported from different DJ software.
 Originally created for my own and fellow Bassoradio DJs use back when I was doing a radio show at Bassoradio.
 The original version is written in Python and has both a PyQt6 GUI and CLI version.
 
-Since then, I have added a Rust implementation, which is my preferred version currently.
+Since then, I have added a Rust implementation, which is my preferred and maintained version now.
 See below for the details.
-
-## Python version
-
-Python version supports:
-
-- csv playlists exported from Serato DJ Pro
-- txt playlists exported from Rekordbox
-
-### Python dependencies
-
-- Python 3.11+ required (primarily due to use of `Self` type hinting)
-- Poetry
-
-```shell
-poetry install
-```
-
-### Looks like
-
-![gui](playlist_gui.png)
-
-![cli](playlist_cli.png)
 
 ## Rust version
 
 Rust CLI version supports:
 
-- csv and txt playlists exported from Serato DJ Pro
-- txt playlists exported from Rekordbox
+- CSV and TXT playlists exported from Serato DJ Pro
+- TXT playlists exported from Rekordbox
 
 > **Note**: Expects Finnish time and date formatting and might not work fully in case timestamps are in a different format
 
@@ -87,3 +65,25 @@ cargo update
 
 - Add unit tests
 - Fix playtime calculations
+
+## Python version
+
+Python version supports:
+
+- csv playlists exported from Serato DJ Pro
+- txt playlists exported from Rekordbox
+
+### Python dependencies
+
+- Python 3.11+ required (primarily due to use of `Self` type hinting)
+- Poetry
+
+```shell
+poetry install
+```
+
+### Looks like
+
+![gui](playlist_gui.png)
+
+![cli](playlist_cli.png)

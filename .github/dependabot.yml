@@ -11,12 +11,6 @@ updates:
     schedule:
       interval: "daily"
 
-  # Python
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
   # Rust
   - package-ecosystem: "cargo"
     directory: "/"

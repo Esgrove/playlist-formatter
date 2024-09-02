@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "playlist_formatter"
-version = "2.0.0"
+version = "2.0.1"
 description = "Tool for auto-formatting DJ playlists exported from DJ software."
 authors = ["Akseli Lukkarila <esgrove@outlook.com>"]
 license = "MIT"
@@ -22,8 +22,6 @@ PyQt6 = "^6.7.1"
 titlecase = "^2.4.1"
 
 [tool.poetry.dev-dependencies]
-black = "^24.8.0"
-isort = "^5.13.0"
 ruff = "^0.6.3"
 
 [tool.black]
@@ -31,18 +29,46 @@ ruff = "^0.6.3"
 line-length = 120
 target-version = ["py311", "py312"]
 include = '\.pyi?$'
-extend-exclude = '''venv*'''
+extend-exclude = '''
+(
+    venv*
+)
+'''
 
 [tool.ruff]
 # https://github.com/charliermarsh/ruff#configuration
 include = ["*.py", "*.pyi", "**/pyproject.toml"]
+extend-include = ["*.ipynb"]
 target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "W", "N", "UP"]
+exclude = [
+    "__pypackages__",
+    "_build",
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "*.ipynb",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv*",
+]
 ignore = []
 per-file-ignores = {}
+# https://docs.astral.sh/ruff/rules/
+select = ["E4", "E7", "E9", "F", "W", "N", "UP", "I"]
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
@@ -56,7 +82,7 @@ fixable = [
     "E",
     "F",
     "G",
-    #"I",  disable isort rules
+    "I",
     "N",
     "Q",
     "S",
@@ -96,33 +122,12 @@ fixable = [
 ]
 unfixable = []
 
-# Exclude a variety of commonly ignored directories.
-exclude = [
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".hg",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "venv*",
-]
-
 [tool.ruff.lint.isort]
-# https://beta.ruff.rs/docs/settings/#isort
+# https://docs.astral.sh/ruff/settings/#lintisort
 combine-as-imports = true
 lines-between-types = 1
+order-by-type = true
+known-first-party = ["src"]
 section-order = [
     "future",
     "standard-library",
@@ -144,5 +149,5 @@ include_trailing_comma = true
 line_length = 120
 multi_line_output = 3
 py_version = 311
-sections = ['FUTURE', 'STDLIB', 'THIRDPARTY', 'FIRSTPARTY', 'LOCALFOLDER']
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 use_parentheses = true

@@ -7,6 +7,7 @@ Akseli Lukkarila
 import csv
 import os
 import sys
+
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from pathlib import Path
@@ -19,6 +20,7 @@ except ImportError:
 
 import chardet
 import colorama
+
 from titlecase import titlecase
 
 from PlaylistFormatter.colorprint import Color, get_color, print_bold, print_color

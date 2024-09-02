@@ -4,10 +4,12 @@ Playlist Formatter GUI
 Akseli Lukkarila
 2018-2023
 """
+
 import os
 import sys
 
 import darkdetect
+
 from PyQt6.QtCore import PYQT_VERSION_STR, QT_VERSION_STR, Qt
 from PyQt6.QtGui import QAction, QColor, QFont, QGuiApplication, QPalette
 from PyQt6.QtWidgets import (

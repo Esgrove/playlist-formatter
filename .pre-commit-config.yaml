@@ -25,13 +25,7 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
         name: python ruff format
-        args: [ --check ]
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        name: python isort
+        args: [--check]
 
   - repo: local
     hooks:
