@@ -12,6 +12,8 @@ if [ -z "$(command -v cargo)" ]; then
     print_error_and_exit "Cargo not found in path. Maybe install rustup?"
 fi
 
+cd "$REPO_ROOT"
+
 cargo install --path "$REPO_ROOT"
 
 executable=$(get_rust_executable_name)
