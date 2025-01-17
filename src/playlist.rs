@@ -173,7 +173,7 @@ impl Playlist {
         match output_path
             .extension()
             .and_then(OsStr::to_str)
-            .map_or(false, |ext| OutputFormat::from_str(ext).is_ok())
+            .is_some_and(|ext| OutputFormat::from_str(ext).is_ok())
         {
             true => output_path,
             false => utils::append_extension_to_path(output_path, output_format.to_extension()),
