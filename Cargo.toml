@@ -22,7 +22,7 @@ env_logger = "0.11.6"
 home = "0.5.11"
 log = "0.4.25"
 regex = "1.11.1"
-rust_xlsxwriter = { version = "0.80.0", features = ["chrono"] }
+rust_xlsxwriter = { version = "0.81.0", features = ["chrono"] }
 strum = { version = "0.26.3", features = ["derive"] }
 strum_macros = "0.26.4"
 titlecase = "3.3.0"
