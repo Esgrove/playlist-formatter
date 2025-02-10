@@ -23,7 +23,7 @@ home = "0.5.11"
 log = "0.4.25"
 regex = "1.11.1"
 rust_xlsxwriter = { version = "0.83.0", features = ["chrono"] }
-strum = { version = "0.26.3", features = ["derive"] }
+strum = { version = "0.27.0", features = ["derive"] }
 strum_macros = "0.26.4"
 titlecase = "3.3.0"
 
