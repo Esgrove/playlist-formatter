@@ -39,7 +39,7 @@ fn init_logger(log_level: &Option<Level>) {
     // Get logging level to use
     let log_level_filter = match log_level {
         None => LevelFilter::Info,
-        Some(ref level) => level.to_log_filter(),
+        Some(level) => level.to_log_filter(),
     };
     // Init logger with timestamps
     env_logger::Builder::new()

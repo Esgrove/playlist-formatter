@@ -127,11 +127,7 @@ pub fn read_serato_txt_lines(initial_lines: Vec<Vec<String>>) -> Vec<Vec<String>
         .split('\t')
         .filter_map(|s| {
             let v = s.trim();
-            if s.is_empty() {
-                None
-            } else {
-                Some(v.to_string())
-            }
+            if s.is_empty() { None } else { Some(v.to_string()) }
         })
         .collect();
     // Get starting location of each column item on a line

@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::string::String;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{NaiveDateTime, TimeDelta};
 use colored::Colorize;
 use csv::Reader;

@@ -40,11 +40,7 @@ pub fn get_total_playtime(tracks: &[Track]) -> Option<TimeDelta> {
             sum += duration;
         }
     }
-    if sum.is_zero() {
-        None
-    } else {
-        Some(sum)
-    }
+    if sum.is_zero() { None } else { Some(sum) }
 }
 
 /// Format duration as a string either as H:MM:SS or MM:SS depending on the duration.

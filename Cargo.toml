@@ -1,14 +1,15 @@
 [package]
 name = "playlist_formatter"
-version = "2.1.1"
+version = "2.1.2"
 authors = ["Akseli Lukkarila <esgrove@outlook.com>"]
 description = "DJ playlist formatting utility"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Esgrove/playlist_tool"
 categories = ["command-line-utilities"]
 keywords = ["dj", "playlist", "serato", "rekordbox"]
+rust-version = "1.85"
 
 [dependencies]
 anyhow = "1.0.96"
