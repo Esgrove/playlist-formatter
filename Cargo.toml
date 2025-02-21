@@ -20,7 +20,7 @@ dunce = "1.0.5"
 encoding_rs_io = "0.1.7"
 env_logger = "0.11.6"
 home = "0.5.11"
-log = "0.4.25"
+log = "0.4.26"
 regex = "1.11.1"
 rust_xlsxwriter = { version = "0.84.0", features = ["chrono"] }
 strum = { version = "0.27.1", features = ["derive"] }
