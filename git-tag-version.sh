@@ -17,22 +17,29 @@ OPTIONS: All options are optional
     -d | --dryrun
         Only print commands instead of executing them.
 
+    -f | --force
+        Force create tags and push if specified.
+
     -p | --push
         Push tags to remote.
 
     --verbose
-        Display commands being executed."
+        Display commands being executed.
+"
 
 DRYRUN=false
 PUSH=false
+FORCE=false
 while [ $# -gt 0 ]; do
     case "$1" in
         -h | --help)
-            print "$USAGE"
-            exit 1
+            print_usage_and_exit
             ;;
         -d | --dryrun)
             DRYRUN=true
+            ;;
+        -f | --force)
+            FORCE=true
             ;;
         -p | --push)
             PUSH=true
@@ -57,16 +64,25 @@ for commit_hash in $(git log --format="%H" --reverse -- Cargo.toml); do
         else
             current_tag="$version_number"
         fi
-        print_magenta "$version_number"
+        print_magenta "Version $version_number"
         if [ -n "$version_number" ]; then
             tag="v$version_number"
-            if git tag -l | grep -q "^${tag}$"; then
-                print_red "Tag $tag already exists, skipping..."
+            if [ "$FORCE" = true ]; then
+                run_command git tag -af "$tag" "$commit_hash" -m "Rust version $version_number"
             else
-                run_command git tag -a "$tag" "$commit_hash" -m "Rust version $version_number"
+                if git tag -l | grep -q "^${tag}$"; then
+                    print_red "Tag $tag already exists, skipping..."
+                    continue
+                else
+                    run_command git tag -a "$tag" "$commit_hash" -m "Rust version $version_number"
+                fi
             fi
             if [ "$PUSH" = true ]; then
-                run_command git push origin "$tag"
+                if [ "$FORCE" = true ]; then
+                    run_command git push --force origin "$tag"
+                else
+                    run_command git push origin "$tag"
+                fi
             fi
         fi
     fi
