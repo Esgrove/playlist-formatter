@@ -12,7 +12,7 @@ keywords = ["dj", "playlist", "serato", "rekordbox"]
 rust-version = "1.85"
 
 [dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 chrono = "0.4.40"
 clap = { version = "4.5.35", features = ["derive"] }
 colored = "3.0.0"
