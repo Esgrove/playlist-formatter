@@ -26,7 +26,7 @@ regex = "1.11.1"
 rust_xlsxwriter = { version = "0.87.0", features = ["chrono"] }
 strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.0"
-titlecase = "3.5.0"
+titlecase = "3.6.0"
 
 [[bin]]
 name = "playfmt"
