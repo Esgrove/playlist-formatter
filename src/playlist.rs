@@ -37,7 +37,7 @@ pub struct Playlist {
 
 impl Playlist {
     /// Initialize playlist from given filepath
-    pub fn new(file: &Path) -> Result<Playlist> {
+    pub fn new(file: &Path) -> Result<Self> {
         match utils::playlist_format(file)? {
             FileFormat::Csv => Self::read_csv(file),
             FileFormat::Txt => Self::read_txt(file),
@@ -63,7 +63,7 @@ impl Playlist {
             print!(", Total duration: {}", utils::formatted_duration(duration));
             let average = TimeDelta::try_seconds(duration.num_seconds() / self.tracks.len() as i64).unwrap();
             print!(" (avg. {} per track)", utils::formatted_duration(average));
-        };
+        }
         println!("\n");
     }
 
@@ -170,13 +170,14 @@ impl Playlist {
             default_save_dir.join(&self.name)
         };
 
-        match output_path
+        if output_path
             .extension()
             .and_then(OsStr::to_str)
             .is_some_and(|ext| OutputFormat::from_str(ext).is_ok())
         {
-            true => output_path,
-            false => utils::append_extension_to_path(output_path, output_format.to_extension()),
+            output_path
+        } else {
+            utils::append_extension_to_path(output_path, output_format.to_extension())
         }
     }
 
@@ -224,11 +225,11 @@ impl Playlist {
                 .map(|path| {
                     path.parent().map_or_else(
                         || env::current_dir().unwrap_or_else(|_| PathBuf::new()),
-                        |parent| parent.to_path_buf(),
+                        std::path::Path::to_path_buf,
                     )
                 })
                 .unwrap_or_else(|error| {
-                    log::error!("Failed to resolve full path to input file: {}", error);
+                    log::error!("Failed to resolve full path to input file: {error}");
                     env::current_dir().unwrap_or_else(|_| PathBuf::new())
                 })
         })
@@ -331,23 +332,23 @@ impl Playlist {
     fn write_txt_file(&self, filepath: &Path) -> Result<()> {
         let mut file = File::create(filepath)?;
         for track in &self.tracks {
-            file.write_all(format!("{}\n", track).as_ref())?;
+            file.write_all(format!("{track}\n").as_ref())?;
         }
         Ok(())
     }
 
     /// Read a .txt playlist file.
     /// This can be either a Rekordbox or Serato exported playlist.
-    fn read_txt(path: &Path) -> Result<Playlist> {
+    fn read_txt(path: &Path) -> Result<Self> {
         let file = File::open(path)?;
         // Rekordbox encodes txt files in UTF-16 :(
         let mut decoder = DecodeReaderBytes::new(file);
         let mut dest = String::new();
         decoder.read_to_string(&mut dest)?;
 
-        let lines = Self::read_txt_lines(&mut dest);
+        let lines = Self::read_txt_lines(&dest);
         log::trace!("Lines ({}):", lines.len());
-        log::trace!("{:#?}", lines);
+        log::trace!("{lines:#?}");
 
         // Map each header name to the column index they correspond to in the data, for example:
         // {"#": 0, "Artist": 1, "Track Title": 2}
@@ -379,7 +380,7 @@ impl Playlist {
 
         log::trace!("Rows ({}):", data.len());
         for row in &data {
-            log::trace!("{:#?}", row);
+            log::trace!("{row:#?}");
         }
 
         // Drop the file extension from file name
@@ -406,7 +407,7 @@ impl Playlist {
 
     /// Read a .csv playlist file.
     /// This can be either a Serato playlist or an already formatted file.
-    fn read_csv(path: &Path) -> Result<Playlist> {
+    fn read_csv(path: &Path) -> Result<Self> {
         let mut reader =
             Reader::from_path(path).with_context(|| format!("Failed to open CSV file: '{}'", path.display()))?;
 
@@ -426,7 +427,7 @@ impl Playlist {
         let data = Self::map_track_data(&mut reader, &header_map);
         log::trace!("Rows ({}):", data.len());
         for row in &data {
-            log::trace!("{:?}", row);
+            log::trace!("{row:?}");
         }
 
         // Check if this is an already-formatted CSV
@@ -452,7 +453,7 @@ impl Playlist {
     ) -> Vec<BTreeMap<String, String>> {
         reader
             .records()
-            .filter_map(|s| s.ok())
+            .filter_map(std::result::Result::ok)
             .map(|record| {
                 let mut items: BTreeMap<String, String> = BTreeMap::new();
                 for (name, index) in header_map {
@@ -465,7 +466,7 @@ impl Playlist {
     }
 
     /// Split txt content string to lines, and each line to separate items
-    fn read_txt_lines(text: &mut str) -> Vec<Vec<String>> {
+    fn read_txt_lines(text: &str) -> Vec<Vec<String>> {
         // Convert to lines and split each line from tab. This handles Rekordbox data.
         let initial_lines: Vec<Vec<String>> = text
             .lines()

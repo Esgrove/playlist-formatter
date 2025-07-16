@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         }
     }
     if config.save {
-        playlist.save_to_file(config.output_path, config.force, config.default, &config.output_format)?
+        playlist.save_to_file(config.output_path, config.force, config.default, &config.output_format)?;
     }
 
     Ok(())
@@ -54,7 +54,7 @@ fn init_logger(log_level: &Option<Level>) {
         .filter(None, log_level_filter)
         .init();
 
-    log::debug!("Using log level: {}", log_level_filter);
+    log::debug!("Using log level: {log_level_filter}");
 }
 
 fn parse_input_path(input: &str) -> Result<PathBuf> {

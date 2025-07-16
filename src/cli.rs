@@ -69,7 +69,7 @@ pub enum Level {
 }
 
 /// Output formatting style for playlist printing
-#[derive(Default, Debug, Clone, PartialEq, Display)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Display)]
 pub enum FormattingStyle {
     /// Basic formatting for sharing playlist text online
     Basic,
@@ -113,7 +113,7 @@ impl CliConfig {
             (false, None)
         };
 
-        CliConfig {
+        Self {
             force: args.force,
             default: args.default,
             quiet: args.quiet,
@@ -126,13 +126,13 @@ impl CliConfig {
 }
 
 impl Level {
-    pub fn to_log_filter(&self) -> log::LevelFilter {
+    pub const fn to_log_filter(&self) -> log::LevelFilter {
         match self {
-            Level::Trace => log::LevelFilter::Trace,
-            Level::Debug => log::LevelFilter::Debug,
-            Level::Info => log::LevelFilter::Info,
-            Level::Warn => log::LevelFilter::Warn,
-            Level::Error => log::LevelFilter::Error,
+            Self::Trace => log::LevelFilter::Trace,
+            Self::Debug => log::LevelFilter::Debug,
+            Self::Info => log::LevelFilter::Info,
+            Self::Warn => log::LevelFilter::Warn,
+            Self::Error => log::LevelFilter::Error,
         }
     }
 }

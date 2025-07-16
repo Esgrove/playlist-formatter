@@ -13,8 +13,8 @@ pub fn read_serato_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> anyh
     let (playlist_name, playlist_date) = serato::parse_serato_playlist_info(&data[0]);
     let tracks = serato::parse_serato_tracks_from_data(&data, playlist_date);
     let total_duration = utils::get_total_playtime(&tracks);
-    let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-    let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+    let max_artist_length: usize = tracks.iter().map(super::track::Track::artist_length).max().unwrap_or(0);
+    let max_title_length: usize = tracks.iter().map(super::track::Track::title_length).max().unwrap_or(0);
     let max_playtime_length: usize = utils::get_max_playtime_length(&tracks);
 
     Ok(Playlist {
@@ -54,8 +54,8 @@ pub fn read_serato_txt(
     };
     let tracks = serato::parse_serato_tracks_from_data(data, playlist_date);
     let total_duration = utils::get_total_playtime(&tracks);
-    let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-    let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+    let max_artist_length: usize = tracks.iter().map(super::track::Track::artist_length).max().unwrap_or(0);
+    let max_title_length: usize = tracks.iter().map(super::track::Track::title_length).max().unwrap_or(0);
     let max_playtime_length: usize = utils::get_max_playtime_length(&tracks);
 
     Ok(Playlist {
@@ -75,6 +75,7 @@ pub fn read_serato_txt(
 /// Parse first row data from a Serato playlist.
 ///
 /// This row should contain the playlist name and start datetime.
+#[must_use]
 pub fn parse_serato_playlist_info(data: &BTreeMap<String, String>) -> (String, Option<NaiveDateTime>) {
     let playlist_name = match data.get("name") {
         None => String::new(),
@@ -92,6 +93,7 @@ pub fn parse_serato_playlist_info(data: &BTreeMap<String, String>) -> (String, O
 }
 
 /// Parse Serato track data from dictionary
+#[must_use]
 pub fn parse_serato_tracks_from_data(
     data: &[BTreeMap<String, String>],
     playlist_date: Option<NaiveDateTime>,
@@ -120,6 +122,7 @@ pub fn parse_serato_tracks_from_data(
     deduped_tracks
 }
 
+#[must_use]
 pub fn read_serato_txt_lines(initial_lines: Vec<Vec<String>>) -> Vec<Vec<String>> {
     let header_line: String = initial_lines[0][0].clone();
     let column_names: Vec<String> = header_line
@@ -186,8 +189,8 @@ fn parse_track_with_time_from_row(start_date: NaiveDate, row: &BTreeMap<String, 
         None => start_time.and_then(|start| end_time.map(|end| end - start)),
     };
     Track::new_with_time(
-        row.get("artist").unwrap_or(&"".to_string()).to_string(),
-        row.get("name").unwrap_or(&"".to_string()).to_string(),
+        row.get("artist").unwrap_or(&String::new()).to_string(),
+        row.get("name").unwrap_or(&String::new()).to_string(),
         start_time,
         end_time,
         play_time,

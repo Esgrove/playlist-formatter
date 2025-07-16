@@ -37,8 +37,8 @@ pub fn read_rekordbox_txt(
     // Remove consecutive duplicates
     tracks.dedup();
 
-    let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-    let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+    let max_artist_length: usize = tracks.iter().map(super::track::Track::artist_length).max().unwrap_or(0);
+    let max_title_length: usize = tracks.iter().map(super::track::Track::title_length).max().unwrap_or(0);
 
     Ok(Playlist {
         date,

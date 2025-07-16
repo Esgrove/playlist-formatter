@@ -5,14 +5,14 @@ use clap::ValueEnum;
 use strum_macros::{Display, EnumIter};
 
 /// Playlist file type
-#[derive(Debug, Clone, PartialEq, EnumIter, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, Display)]
 pub enum FileFormat {
     Txt,
     Csv,
 }
 
 /// Export file type
-#[derive(Debug, Clone, PartialEq, Default, EnumIter, Display, ValueEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, EnumIter, Display, ValueEnum)]
 pub enum OutputFormat {
     Txt,
     Csv,
@@ -24,7 +24,7 @@ pub enum OutputFormat {
 ///
 /// Each software has its own formatting style.
 /// `Formatted` means it was already processed by this program.
-#[derive(Debug, Clone, PartialEq, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Display)]
 pub enum PlaylistType {
     Rekordbox,
     Serato,
@@ -34,10 +34,10 @@ pub enum PlaylistType {
 /// Convert string to `FileFormat` enum
 impl FromStr for FileFormat {
     type Err = anyhow::Error;
-    fn from_str(input: &str) -> anyhow::Result<FileFormat> {
+    fn from_str(input: &str) -> anyhow::Result<Self> {
         match input.to_lowercase().trim() {
-            "csv" => Ok(FileFormat::Csv),
-            "txt" => Ok(FileFormat::Txt),
+            "csv" => Ok(Self::Csv),
+            "txt" => Ok(Self::Txt),
             "" => Err(anyhow!("Can't convert empty string to file format")),
             _ => Err(anyhow!("Unsupported file format: '{input}'")),
         }
@@ -47,11 +47,11 @@ impl FromStr for FileFormat {
 /// Convert string to `OutputFormat` enum
 impl FromStr for OutputFormat {
     type Err = anyhow::Error;
-    fn from_str(input: &str) -> anyhow::Result<OutputFormat> {
+    fn from_str(input: &str) -> anyhow::Result<Self> {
         match input.to_lowercase().trim() {
-            "csv" => Ok(OutputFormat::Csv),
-            "txt" => Ok(OutputFormat::Txt),
-            "xlsx" => Ok(OutputFormat::Xlsx),
+            "csv" => Ok(Self::Csv),
+            "txt" => Ok(Self::Txt),
+            "xlsx" => Ok(Self::Xlsx),
             "" => Err(anyhow!("Can't convert empty string to file format")),
             _ => Err(anyhow!("Unsupported file format: '{input}'")),
         }
@@ -59,6 +59,7 @@ impl FromStr for OutputFormat {
 }
 
 impl OutputFormat {
+    #[must_use]
     pub fn to_extension(&self) -> String {
         self.to_string().to_lowercase()
     }
@@ -82,8 +83,7 @@ mod tests {
         let result = FileFormat::from_str("mp3");
         assert!(
             result.is_err(),
-            "Expected an error for unsupported format, but got {:?}",
-            result
+            "Expected an error for unsupported format, but got {result:?}"
         );
         if let Err(e) = result {
             assert_eq!(e.to_string(), "Unsupported file format: 'mp3'");
@@ -95,8 +95,7 @@ mod tests {
         let result = FileFormat::from_str("");
         assert!(
             result.is_err(),
-            "Expected an error for empty string, but got {:?}",
-            result
+            "Expected an error for empty string, but got {result:?}"
         );
         if let Err(e) = result {
             assert_eq!(e.to_string(), "Can't convert empty string to file format");

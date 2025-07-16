@@ -13,8 +13,8 @@ pub fn read_formatted_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> a
     let playlist_date = None;
     let tracks = parse_formatted_tracks_from_data(&data);
     let total_duration = utils::get_total_playtime(&tracks);
-    let max_artist_length: usize = tracks.iter().map(|t| t.artist_length()).max().unwrap_or(0);
-    let max_title_length: usize = tracks.iter().map(|t| t.title_length()).max().unwrap_or(0);
+    let max_artist_length: usize = tracks.iter().map(super::track::Track::artist_length).max().unwrap_or(0);
+    let max_title_length: usize = tracks.iter().map(super::track::Track::title_length).max().unwrap_or(0);
     let max_playtime_length: usize = utils::get_max_playtime_length(&tracks);
 
     Ok(Playlist {
@@ -32,17 +32,18 @@ pub fn read_formatted_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> a
 }
 
 /// Parse track data from dictionary
+#[must_use]
 pub fn parse_formatted_tracks_from_data(data: &[BTreeMap<String, String>]) -> Vec<Track> {
     let mut tracks: Vec<Track> = Vec::new();
-    for row in data.iter() {
-        let artist = row.get("Artist").unwrap_or(&"".to_string()).to_string();
-        let name = row.get("Title").unwrap_or(&"".to_string()).to_string();
+    for row in data {
+        let artist = row.get("Artist").unwrap_or(&String::new()).to_string();
+        let name = row.get("Title").unwrap_or(&String::new()).to_string();
         // TODO: parse times
         // let playtime = row.get("playtime");
         // let start_time = row.get("start time");
         // let end_time = row.get("end time");
         if !artist.is_empty() && !name.is_empty() {
-            tracks.push(Track::new(artist, name))
+            tracks.push(Track::new(artist, name));
         }
     }
     tracks

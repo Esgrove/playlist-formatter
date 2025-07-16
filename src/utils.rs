@@ -33,9 +33,10 @@ pub fn append_extension_to_path(path: PathBuf, extension: impl AsRef<OsStr>) -> 
 }
 
 /// Get total playtime for a list of tracks
+#[must_use]
 pub fn get_total_playtime(tracks: &[Track]) -> Option<TimeDelta> {
     let mut sum = TimeDelta::try_seconds(0)?;
-    for track in tracks.iter() {
+    for track in tracks {
         if let Some(duration) = track.play_time {
             sum += duration;
         }
@@ -44,6 +45,7 @@ pub fn get_total_playtime(tracks: &[Track]) -> Option<TimeDelta> {
 }
 
 /// Format duration as a string either as H:MM:SS or MM:SS depending on the duration.
+#[must_use]
 pub fn formatted_duration(duration: TimeDelta) -> String {
     let hours = duration.num_hours();
     let minutes = duration.num_minutes();
@@ -78,12 +80,13 @@ pub fn extract_datetime_from_name(input: &str) -> Option<NaiveDateTime> {
 }
 
 /// Get DJ playlist directory path in Dropbox if it exists
+#[must_use]
 pub fn dropbox_save_dir() -> Option<PathBuf> {
     let path = if cfg!(target_os = "windows") {
         Some(dunce::simplified(Path::new("D:\\Dropbox\\DJ\\PLAYLIST")).to_path_buf())
     } else if let Some(mut home) = home_dir() {
         home.push("Dropbox/DJ/PLAYLIST");
-        Some(home.to_path_buf())
+        Some(home.clone())
     } else {
         None
     };
@@ -91,6 +94,7 @@ pub fn dropbox_save_dir() -> Option<PathBuf> {
 }
 
 /// Get the longest formatted track playtime length in number of chars.
+#[must_use]
 pub fn get_max_playtime_length(tracks: &[Track]) -> usize {
     tracks
         .iter()
@@ -124,9 +128,10 @@ pub fn playlist_format(file: &Path) -> Result<FileFormat> {
 /// Normalize path that might not exist yet.
 // Copied from Cargo
 // https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
+#[must_use]
 pub fn normalize_path(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ std::path::Component::Prefix(..)) = components.peek().cloned() {
+    let mut ret = if let Some(c @ std::path::Component::Prefix(..)) = components.peek().copied() {
         components.next();
         PathBuf::from(c.as_os_str())
     } else {
