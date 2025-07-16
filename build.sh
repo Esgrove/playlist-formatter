@@ -6,11 +6,9 @@ USAGE="Usage: $0 [OPTIONS]
 Build the Rust playlist tool.
 
 OPTIONS: All options are optional
-    --help
-        Display these instructions.
-
-    --verbose
-        Display commands being executed."
+    -h | --help       Display these instructions.
+    -v | --verbose    Display commands being executed.
+"
 
 # Import common functions
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -19,11 +17,10 @@ source "$DIR/common.sh"
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --help)
-            echo "$USAGE"
-            exit 1
+        -h | --help)
+            print_usage_and_exit
             ;;
-        --verbose)
+        -v | --verbose)
             set -x
             ;;
     esac
