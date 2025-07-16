@@ -7,14 +7,17 @@ use super::types::{FileFormat, PlaylistType};
 use super::utils;
 
 /// Read a formatted CSV playlist file.
-pub fn read_formatted_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> anyhow::Result<Playlist> {
+pub fn read_formatted_csv(path: &Path, data: &[BTreeMap<String, String>]) -> anyhow::Result<Playlist> {
     // TODO: fix data reading
-    let playlist_name = path.file_stem().unwrap().to_string_lossy().to_string();
+    let playlist_name = path
+        .file_stem()
+        .map_or_else(String::new, |stem| stem.to_string_lossy().to_string());
+
     let playlist_date = None;
-    let tracks = parse_formatted_tracks_from_data(&data);
+    let tracks = parse_formatted_tracks_from_data(data);
     let total_duration = utils::get_total_playtime(&tracks);
-    let max_artist_length: usize = tracks.iter().map(super::track::Track::artist_length).max().unwrap_or(0);
-    let max_title_length: usize = tracks.iter().map(super::track::Track::title_length).max().unwrap_or(0);
+    let max_artist_length: usize = tracks.iter().map(Track::artist_length).max().unwrap_or(0);
+    let max_title_length: usize = tracks.iter().map(Track::title_length).max().unwrap_or(0);
     let max_playtime_length: usize = utils::get_max_playtime_length(&tracks);
 
     Ok(Playlist {

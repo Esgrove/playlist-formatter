@@ -79,7 +79,7 @@ pub fn extract_datetime_from_name(input: &str) -> Option<NaiveDateTime> {
     None
 }
 
-/// Get DJ playlist directory path in Dropbox if it exists
+/// Get the DJ playlist directory path in Dropbox if it exists
 #[must_use]
 pub fn dropbox_save_dir() -> Option<PathBuf> {
     let path = if cfg!(target_os = "windows") {
@@ -99,7 +99,7 @@ pub fn get_max_playtime_length(tracks: &[Track]) -> usize {
     tracks
         .iter()
         .map(|t| {
-            formatted_duration(t.play_time.unwrap_or(TimeDelta::try_seconds(0).unwrap()))
+            formatted_duration(t.play_time.unwrap_or(TimeDelta::zero()))
                 .chars()
                 .count()
         })
@@ -125,7 +125,7 @@ pub fn playlist_format(file: &Path) -> Result<FileFormat> {
     FileFormat::from_str(extension)
 }
 
-/// Normalize path that might not exist yet.
+/// Normalize a path that might not exist.
 // Copied from Cargo
 // https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
 #[must_use]

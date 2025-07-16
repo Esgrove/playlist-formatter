@@ -11,7 +11,7 @@ pub fn read_rekordbox_txt(
     path: &Path,
     name: String,
     header: &BTreeMap<String, usize>,
-    data: &[BTreeMap<String, String>],
+    playlist_rows: &[BTreeMap<String, String>],
 ) -> anyhow::Result<Playlist> {
     let required_fields = ["Artist", "Track Title"];
     for field in required_fields {
@@ -22,14 +22,18 @@ pub fn read_rekordbox_txt(
 
     let date = utils::extract_datetime_from_name(&name);
 
-    // Rekordbox does not have any start or play time info :(
+    // Rekordbox does not have any start or playtime info :(
     let mut tracks: Vec<Track> = {
-        data.iter()
-            .map(|row| {
-                Track::new(
-                    row.get(required_fields[0]).unwrap().to_string(),
-                    row.get(required_fields[1]).unwrap().to_string(),
-                )
+        playlist_rows
+            .iter()
+            .filter_map(|row| {
+                let artist = row.get(required_fields[0])?;
+                let title = row.get(required_fields[1])?;
+                if artist.is_empty() && title.is_empty() {
+                    None
+                } else {
+                    Some(Track::new(artist.to_string(), title.to_string()))
+                }
             })
             .collect()
     };
@@ -37,8 +41,8 @@ pub fn read_rekordbox_txt(
     // Remove consecutive duplicates
     tracks.dedup();
 
-    let max_artist_length: usize = tracks.iter().map(super::track::Track::artist_length).max().unwrap_or(0);
-    let max_title_length: usize = tracks.iter().map(super::track::Track::title_length).max().unwrap_or(0);
+    let max_artist_length: usize = tracks.iter().map(Track::artist_length).max().unwrap_or(0);
+    let max_title_length: usize = tracks.iter().map(Track::title_length).max().unwrap_or(0);
 
     Ok(Playlist {
         date,

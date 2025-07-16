@@ -5,6 +5,7 @@ use playlist_formatter::types::OutputFormat;
 
 /// DJ playlist formatting utility
 #[derive(Parser)]
+#[allow(clippy::struct_excessive_bools)]
 #[command(
     author,
     version,
@@ -55,6 +56,7 @@ pub struct Args {
         value_name = "OUTPUT_FILE",
         conflicts_with = "output"
     )]
+    #[allow(clippy::option_option)]
     save: Option<Option<String>>,
 }
 
@@ -81,6 +83,7 @@ pub enum FormattingStyle {
 }
 
 #[derive(Default, Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct CliConfig {
     pub default: bool,
     pub force: bool,
@@ -103,9 +106,9 @@ impl CliConfig {
         };
         log::debug!("Formatting style: {style}");
 
-        let (save, output_path) = if args.save.is_some() {
+        let (save, output_path) = if let Some(save_path) = args.save {
             log::debug!("Save option specified");
-            (true, args.save.unwrap())
+            (true, save_path)
         } else if args.output.is_some() {
             log::debug!("Output path specified");
             (true, args.output)

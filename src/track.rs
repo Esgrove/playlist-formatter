@@ -62,13 +62,9 @@ impl Track {
 impl Add<Option<TimeDelta>> for Track {
     type Output = Self;
     fn add(self, duration: Option<TimeDelta>) -> Self {
-        let play_time = match self.play_time {
-            Some(time) => match duration {
-                None => Some(time),
-                Some(d) => Some(time + d),
-            },
-            None => duration,
-        };
+        let play_time = self
+            .play_time
+            .map_or(duration, |time| duration.map_or(Some(time), |d| Some(time + d)));
         Self {
             artist: self.artist,
             title: self.title,
@@ -109,11 +105,7 @@ impl Add<TimeDelta> for Track {
             title: self.title,
             start_time: self.start_time,
             end_time: self.end_time,
-            play_time: if let Some(time) = self.play_time {
-                Some(time + duration)
-            } else {
-                Some(duration)
-            },
+            play_time: self.play_time.map_or(Some(duration), |time| Some(time + duration)),
         }
     }
 }

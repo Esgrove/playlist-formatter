@@ -52,17 +52,22 @@ impl Playlist {
             "Format: {}, Type: {}, Date: {}",
             self.file_format.to_string().cyan(),
             self.playlist_type.to_string().cyan(),
-            if let Some(date) = self.date {
-                date.format("%Y.%m.%d %H:%M").to_string().magenta()
-            } else {
-                "None".to_string().yellow()
-            }
+            self.date.map_or_else(
+                || "None".to_string().yellow(),
+                |date| date.format("%Y.%m.%d %H:%M").to_string().magenta()
+            )
         );
         print!("Tracks: {}", self.tracks.len());
         if let Some(duration) = self.total_duration {
             print!(", Total duration: {}", utils::formatted_duration(duration));
-            let average = TimeDelta::try_seconds(duration.num_seconds() / self.tracks.len() as i64).unwrap();
-            print!(" (avg. {} per track)", utils::formatted_duration(average));
+            // Calculate average only if we have tracks
+            #[allow(clippy::cast_possible_wrap)]
+            if !self.tracks.is_empty() {
+                if let Some(average_seconds) = TimeDelta::try_seconds(duration.num_seconds() / self.tracks.len() as i64)
+                {
+                    print!(" (avg. {} per track)", utils::formatted_duration(average_seconds));
+                }
+            }
         }
         println!("\n");
     }
@@ -122,11 +127,9 @@ impl Playlist {
         println!("{divider}");
 
         for (index, track) in self.tracks.iter().enumerate() {
-            let playtime = if let Some(d) = track.play_time {
-                utils::formatted_duration(d).green()
-            } else {
-                "".normal()
-            };
+            let playtime = track
+                .play_time
+                .map_or_else(|| "".normal(), |d| utils::formatted_duration(d).green());
             println!(
                 "{:>0index_width$}   {:<artist_width$}   {:<title_width$}   {:>playtime_width$}",
                 index + 1,
@@ -157,18 +160,18 @@ impl Playlist {
             .filter(|trimmed| !trimmed.is_empty())
             .map(PathBuf::from);
 
-        let output_path = if let Some(path) = potential_path {
-            if use_default_dir {
-                path.file_name()
-                    .map(|filename| default_save_dir.join(filename))
-                    .unwrap_or(path)
-            } else {
-                path
-            }
-        } else {
-            // If `potential_path` is `None`, use the default save directory.
-            default_save_dir.join(&self.name)
-        };
+        let output_path = potential_path.map_or_else(
+            || default_save_dir.join(&self.name),
+            |path| {
+                if use_default_dir {
+                    path.file_name()
+                        .map(|filename| default_save_dir.join(filename))
+                        .unwrap_or(path)
+                } else {
+                    path
+                }
+            },
+        );
 
         if output_path
             .extension()
@@ -214,25 +217,29 @@ impl Playlist {
         }
     }
 
-    /// Return default save directory for playlist output file.
+    /// Return default save directory for the playlist output file.
     ///
     /// This will first try to use the Dropbox playlist directory if it exists on disk.
     /// After that, it will try the get the directory of the input file.
     /// Otherwise, returns an empty path so the file will go to the current working directory.
     fn default_save_dir(&self) -> PathBuf {
-        utils::dropbox_save_dir().unwrap_or_else(|| {
-            dunce::canonicalize(&self.file)
-                .map(|path| {
-                    path.parent().map_or_else(
-                        || env::current_dir().unwrap_or_else(|_| PathBuf::new()),
-                        std::path::Path::to_path_buf,
-                    )
-                })
-                .unwrap_or_else(|error| {
-                    log::error!("Failed to resolve full path to input file: {error}");
-                    env::current_dir().unwrap_or_else(|_| PathBuf::new())
-                })
-        })
+        utils::dropbox_save_dir().map_or_else(
+            || {
+                dunce::canonicalize(&self.file).map_or_else(
+                    |error| {
+                        log::error!("Failed to resolve full path to input file: {error}");
+                        env::current_dir().unwrap_or_else(|_| PathBuf::new())
+                    },
+                    |path| {
+                        path.parent().map_or_else(
+                            || env::current_dir().unwrap_or_else(|_| PathBuf::new()),
+                            Path::to_path_buf,
+                        )
+                    },
+                )
+            },
+            |dir| dir,
+        )
     }
 
     /// Write tracks to CSV file
@@ -240,18 +247,13 @@ impl Playlist {
         let mut writer = csv::Writer::from_path(filepath)?;
         writer.write_record(["Artist", "", "Title", "Playtime", "Start time", "End time"])?;
         for track in &self.tracks {
-            let duration = match track.play_time {
-                None => String::new(),
-                Some(d) => utils::formatted_duration(d),
-            };
-            let start_time = match track.start_time {
-                None => String::new(),
-                Some(t) => t.format("%Y.%m.%d %H:%M:%S").to_string(),
-            };
-            let end_time = match track.end_time {
-                None => String::new(),
-                Some(t) => t.format("%Y.%m.%d %H:%M:%S").to_string(),
-            };
+            let duration = track.play_time.map_or_else(String::new, utils::formatted_duration);
+            let start_time = track
+                .start_time
+                .map_or_else(String::new, |t| t.format("%Y.%m.%d %H:%M:%S").to_string());
+            let end_time = track
+                .end_time
+                .map_or_else(String::new, |t| t.format("%Y.%m.%d %H:%M:%S").to_string());
             writer.write_record([
                 track.artist.clone(),
                 "-".to_string(),
@@ -276,7 +278,7 @@ impl Playlist {
         Ok(())
     }
 
-    /// Write tracks to Excel file
+    /// Write tracks to an Excel file
     fn write_excel_file(&self, filepath: &Path) -> Result<()> {
         let mut workbook = Workbook::new();
         let sheet = workbook.add_worksheet().set_name(self.name.clone())?;
@@ -298,7 +300,7 @@ impl Playlist {
 
         // Write tracks
         for (i, track) in self.tracks.iter().enumerate() {
-            let row = (i + 1) as RowNum;
+            let row = RowNum::try_from(i + 1)?;
             let duration = track.play_time.map_or(String::new(), utils::formatted_duration);
             let start_time = track
                 .start_time
@@ -317,7 +319,7 @@ impl Playlist {
 
         // Add total TimeDelta at the end
         if let Some(t) = self.total_duration {
-            let total_row = (self.tracks.len() + 1) as RowNum;
+            let total_row = RowNum::try_from(self.tracks.len() + 1)?;
             let formatted_duration = utils::formatted_duration(t);
             sheet.write_string_with_format(total_row, 3, &formatted_duration, &duration_format)?;
         }
@@ -328,7 +330,7 @@ impl Playlist {
         Ok(())
     }
 
-    /// Write tracks to TXT file
+    /// Write tracks to a TXT file
     fn write_txt_file(&self, filepath: &Path) -> Result<()> {
         let mut file = File::create(filepath)?;
         for track in &self.tracks {
@@ -392,7 +394,7 @@ impl Playlist {
             .ok_or_else(|| anyhow!("File name contains invalid Unicode"))?
             .to_string();
 
-        // Check playlist type
+        // Check the playlist type
         if header_map.contains_key("name") {
             log::debug!("Detected Serato TXT");
             serato::read_serato_txt(path, name, &header_map, &data)
@@ -433,7 +435,7 @@ impl Playlist {
         // Check if this is an already-formatted CSV
         let formatted_fields = ["Artist", "", "Title"];
         if formatted_fields.into_iter().all(|field| header_map.contains_key(field)) {
-            formatted::read_formatted_csv(path, data)
+            formatted::read_formatted_csv(path, &data)
         } else {
             // This should be a Serato CSV
             let required_serato_fields = ["name", "artist"];
@@ -442,7 +444,7 @@ impl Playlist {
                     anyhow::bail!("Serato CSV missing required field: '{}'", field)
                 }
             }
-            serato::read_serato_csv(path, data)
+            serato::read_serato_csv(path, &data)
         }
     }
 
@@ -453,7 +455,7 @@ impl Playlist {
     ) -> Vec<BTreeMap<String, String>> {
         reader
             .records()
-            .filter_map(std::result::Result::ok)
+            .filter_map(Result::ok)
             .map(|record| {
                 let mut items: BTreeMap<String, String> = BTreeMap::new();
                 for (name, index) in header_map {

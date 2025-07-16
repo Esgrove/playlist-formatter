@@ -6,15 +6,15 @@ use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, Timelike};
 use super::playlist::Playlist;
 use super::track::Track;
 use super::types::{FileFormat, PlaylistType};
-use super::{serato, utils};
+use super::utils;
 
 /// Read a Serato CSV playlist file.
-pub fn read_serato_csv(path: &Path, data: Vec<BTreeMap<String, String>>) -> anyhow::Result<Playlist> {
-    let (playlist_name, playlist_date) = serato::parse_serato_playlist_info(&data[0]);
-    let tracks = serato::parse_serato_tracks_from_data(&data, playlist_date);
+pub fn read_serato_csv(path: &Path, data: &[BTreeMap<String, String>]) -> anyhow::Result<Playlist> {
+    let (playlist_name, playlist_date) = parse_serato_playlist_info(&data[0]);
+    let tracks = parse_serato_tracks_from_data(data, playlist_date);
     let total_duration = utils::get_total_playtime(&tracks);
-    let max_artist_length: usize = tracks.iter().map(super::track::Track::artist_length).max().unwrap_or(0);
-    let max_title_length: usize = tracks.iter().map(super::track::Track::title_length).max().unwrap_or(0);
+    let max_artist_length: usize = tracks.iter().map(Track::artist_length).max().unwrap_or(0);
+    let max_title_length: usize = tracks.iter().map(Track::title_length).max().unwrap_or(0);
     let max_playtime_length: usize = utils::get_max_playtime_length(&tracks);
 
     Ok(Playlist {
@@ -36,7 +36,7 @@ pub fn read_serato_txt(
     path: &Path,
     name: String,
     header: &BTreeMap<String, usize>,
-    data: &[BTreeMap<String, String>],
+    playlist_rows: &[BTreeMap<String, String>],
 ) -> anyhow::Result<Playlist> {
     let required_fields = ["artist", "name"];
     for field in required_fields {
@@ -45,17 +45,17 @@ pub fn read_serato_txt(
         }
     }
 
-    let (playlist_name, playlist_date) = serato::parse_serato_playlist_info(&data[0]);
+    let (playlist_name, playlist_date) = parse_serato_playlist_info(&playlist_rows[0]);
     let name = if playlist_name.is_empty() { name } else { playlist_name };
     let date = if playlist_date.is_none() {
         utils::extract_datetime_from_name(&name)
     } else {
         playlist_date
     };
-    let tracks = serato::parse_serato_tracks_from_data(data, playlist_date);
+    let tracks = parse_serato_tracks_from_data(playlist_rows, playlist_date);
     let total_duration = utils::get_total_playtime(&tracks);
-    let max_artist_length: usize = tracks.iter().map(super::track::Track::artist_length).max().unwrap_or(0);
-    let max_title_length: usize = tracks.iter().map(super::track::Track::title_length).max().unwrap_or(0);
+    let max_artist_length: usize = tracks.iter().map(Track::artist_length).max().unwrap_or(0);
+    let max_title_length: usize = tracks.iter().map(Track::title_length).max().unwrap_or(0);
     let max_playtime_length: usize = utils::get_max_playtime_length(&tracks);
 
     Ok(Playlist {
@@ -77,15 +77,13 @@ pub fn read_serato_txt(
 /// This row should contain the playlist name and start datetime.
 #[must_use]
 pub fn parse_serato_playlist_info(data: &BTreeMap<String, String>) -> (String, Option<NaiveDateTime>) {
-    let playlist_name = match data.get("name") {
-        None => String::new(),
-        Some(n) => n.to_string(),
-    };
+    let playlist_name = data
+        .get("name")
+        .map_or_else(String::new, std::string::ToString::to_string);
     // timestamp, for example "10.01.2019, 20.00.00 EET"
-    let mut playlist_date = match data.get("start time") {
-        None => None,
-        Some(time) => NaiveDateTime::parse_from_str(time, "%d.%m.%Y, %H.%M.%S %Z").ok(),
-    };
+    let mut playlist_date = data
+        .get("start time")
+        .and_then(|time| NaiveDateTime::parse_from_str(time, "%d.%m.%Y, %H.%M.%S %Z").ok());
     if playlist_date.is_none() && !playlist_name.is_empty() {
         playlist_date = utils::extract_datetime_from_name(&playlist_name);
     }
@@ -133,11 +131,13 @@ pub fn read_serato_txt_lines(initial_lines: Vec<Vec<String>>) -> Vec<Vec<String>
             if s.is_empty() { None } else { Some(v.to_string()) }
         })
         .collect();
+
     // Get starting location of each column item on a line
     let mut column_start_indices: Vec<usize> = column_names
         .iter()
-        .map(|field| header_line.find(field).unwrap())
+        .filter_map(|field| header_line.find(field))
         .collect();
+
     // Extract each column item from the line, starting from the end of the line
     column_start_indices.reverse();
     let mut serato_lines: Vec<Vec<String>> = Vec::new();
@@ -179,15 +179,17 @@ fn parse_track_with_time_from_row(start_date: NaiveDate, row: &BTreeMap<String, 
         .and_then(|t| NaiveTime::parse_from_str(t, "%H.%M.%S %Z").ok())
         .map(|time| NaiveDateTime::new(start_date, time));
 
-    let play_time = match row.get("playtime") {
-        Some(t) => NaiveTime::parse_from_str(t, "%H:%M:%S").ok().and_then(|n| {
-            let hours = TimeDelta::try_hours(i64::from(n.hour()))?;
-            let minutes = TimeDelta::try_minutes(i64::from(n.minute()))?;
-            let seconds = TimeDelta::try_seconds(i64::from(n.second()))?;
-            Some(hours + minutes + seconds)
-        }),
-        None => start_time.and_then(|start| end_time.map(|end| end - start)),
-    };
+    let play_time = row.get("playtime").map_or_else(
+        || start_time.and_then(|start| end_time.map(|end| end - start)),
+        |t| {
+            NaiveTime::parse_from_str(t, "%H:%M:%S").ok().and_then(|n| {
+                let hours = TimeDelta::try_hours(i64::from(n.hour()))?;
+                let minutes = TimeDelta::try_minutes(i64::from(n.minute()))?;
+                let seconds = TimeDelta::try_seconds(i64::from(n.second()))?;
+                Some(hours + minutes + seconds)
+            })
+        },
+    );
     Track::new_with_time(
         row.get("artist").unwrap_or(&String::new()).to_string(),
         row.get("name").unwrap_or(&String::new()).to_string(),

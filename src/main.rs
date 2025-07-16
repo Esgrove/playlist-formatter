@@ -13,7 +13,7 @@ use playlist_formatter::playlist::Playlist;
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    init_logger(&args.log);
+    init_logger(args.log.as_ref());
     let absolute_input_path = parse_input_path(&args.file)?;
     let config = CliConfig::from_args(args);
     let playlist = Playlist::new(&absolute_input_path)?;
@@ -35,12 +35,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn init_logger(log_level: &Option<Level>) {
+fn init_logger(log_level: Option<&Level>) {
     // Get logging level to use
-    let log_level_filter = match log_level {
-        None => LevelFilter::Info,
-        Some(level) => level.to_log_filter(),
-    };
+    let log_level_filter = log_level.map_or(LevelFilter::Info, cli::Level::to_log_filter);
     // Init logger with timestamps
     env_logger::Builder::new()
         .format(|formatter, record| match record.level() {
