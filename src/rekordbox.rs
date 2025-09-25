@@ -16,7 +16,7 @@ pub fn read_rekordbox_txt(
     let required_fields = ["Artist", "Track Title"];
     for field in required_fields {
         if !header.contains_key(field) {
-            anyhow::bail!("Rekordbox TXT missing required field: '{}'", field)
+            anyhow::bail!("Rekordbox TXT missing required field: '{field}'")
         }
     }
 

@@ -41,7 +41,7 @@ pub fn read_serato_txt(
     let required_fields = ["artist", "name"];
     for field in required_fields {
         if !header.contains_key(field) {
-            anyhow::bail!("Serato TXT missing required field: '{}'", field)
+            anyhow::bail!("Serato TXT missing required field: '{field}'")
         }
     }
 
@@ -106,13 +106,13 @@ pub fn parse_serato_tracks_from_data(
     // Remove consecutive duplicates
     let mut deduped_tracks: Vec<Track> = Vec::new();
     for track in initial_tracks {
-        if let Some(last_track) = deduped_tracks.last_mut() {
-            if *last_track == track {
-                // Add playtime of duplicate track to previous
-                *last_track += track.play_time;
-                last_track.end_time = track.end_time;
-                continue;
-            }
+        if let Some(last_track) = deduped_tracks.last_mut()
+            && *last_track == track
+        {
+            // Add playtime of duplicate track to previous
+            *last_track += track.play_time;
+            last_track.end_time = track.end_time;
+            continue;
         }
         deduped_tracks.push(track);
     }

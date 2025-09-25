@@ -62,11 +62,10 @@ impl Playlist {
             print!(", Total duration: {}", utils::formatted_duration(duration));
             // Calculate average only if we have tracks
             #[allow(clippy::cast_possible_wrap)]
-            if !self.tracks.is_empty() {
-                if let Some(average_seconds) = TimeDelta::try_seconds(duration.num_seconds() / self.tracks.len() as i64)
-                {
-                    print!(" (avg. {} per track)", utils::formatted_duration(average_seconds));
-                }
+            if !self.tracks.is_empty()
+                && let Some(average_seconds) = TimeDelta::try_seconds(duration.num_seconds() / self.tracks.len() as i64)
+            {
+                print!(" (avg. {} per track)", utils::formatted_duration(average_seconds));
             }
         }
         println!("\n");
@@ -441,7 +440,7 @@ impl Playlist {
             let required_serato_fields = ["name", "artist"];
             for field in required_serato_fields {
                 if !header_map.contains_key(field) {
-                    anyhow::bail!("Serato CSV missing required field: '{}'", field)
+                    anyhow::bail!("Serato CSV missing required field: '{field}'")
                 }
             }
             serato::read_serato_csv(path, &data)

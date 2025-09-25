@@ -1,6 +1,6 @@
 [package]
 name = "playlist_formatter"
-version = "2.2.0"
+version = "2.2.1"
 authors = ["Akseli Lukkarila <esgrove@outlook.com>"]
 description = "DJ playlist formatting utility"
 edition = "2024"
@@ -9,10 +9,10 @@ readme = "README.md"
 repository = "https://github.com/Esgrove/playlist_tool"
 categories = ["command-line-utilities"]
 keywords = ["dj", "playlist", "serato", "rekordbox"]
-rust-version = "1.87"
+rust-version = "1.89"
 
 [dependencies]
-anyhow = "1.0.99"
+anyhow = "1.0.100"
 chrono = "0.4.42"
 clap = { version = "4.5.48", features = ["derive"] }
 colored = "3.0.0"
@@ -22,7 +22,7 @@ encoding_rs_io = "0.1.7"
 env_logger = "0.11.8"
 home = "0.5.11"
 log = "0.4.28"
-regex = "1.11.2"
+regex = "1.11.3"
 rust_xlsxwriter = { version = "0.90.1", features = ["chrono"] }
 strum = { version = "0.27.2", features = ["derive"] }
 strum_macros = "0.27.2"
