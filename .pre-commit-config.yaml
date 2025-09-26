@@ -1,7 +1,7 @@
 exclude: ^test.txt|(.idea|.vscode)/
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     # https://github.com/pre-commit/pre-commit-hooks
     hooks:
       - id: check-added-large-files
@@ -18,7 +18,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.11.10"
+    rev: "v0.13.2"
     hooks:
       - id: ruff
         name: python ruff
