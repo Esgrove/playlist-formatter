@@ -20,7 +20,7 @@ csv = "1.4.0"
 dunce = "1.0.5"
 encoding_rs_io = "0.1.7"
 env_logger = "0.11.8"
-home = "0.5.11"
+home = "0.5.12"
 log = "0.4.28"
 regex = "1.12.2"
 rust_xlsxwriter = { version = "0.90.1", features = ["chrono"] }
