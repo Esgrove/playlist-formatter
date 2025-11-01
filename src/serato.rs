@@ -147,7 +147,7 @@ pub fn read_serato_txt_lines(initial_lines: Vec<Vec<String>>) -> Vec<Vec<String>
             continue;
         }
         let mut split_line: Vec<String> = Vec::new();
-        let mut remaining_line: String = line[0].to_string();
+        let mut remaining_line: String = line[0].clone();
         for index in &column_start_indices {
             // some lines do not contain data in all fields
             if *index >= remaining_line.len() {
@@ -191,8 +191,8 @@ fn parse_track_with_time_from_row(start_date: NaiveDate, row: &BTreeMap<String, 
         },
     );
     Track::new_with_time(
-        row.get("artist").unwrap_or(&String::new()).to_string(),
-        row.get("name").unwrap_or(&String::new()).to_string(),
+        row.get("artist").unwrap_or(&String::new()).clone(),
+        row.get("name").unwrap_or(&String::new()).clone(),
         start_time,
         end_time,
         play_time,

@@ -358,7 +358,7 @@ impl Playlist {
             headers
                 .iter()
                 .enumerate()
-                .map(|(index, value)| (value.to_string(), index))
+                .map(|(index, value)| (value.clone(), index))
                 .collect()
         };
         log::trace!("txt headers ({}): {:?}", header_map.keys().len(), header_map.keys());
@@ -372,7 +372,7 @@ impl Playlist {
                     // header map contains the index of the value corresponding to the key
                     for (key, index) in &header_map {
                         let value = &line[*index];
-                        items.insert(key.to_string(), value.to_string());
+                        items.insert(key.clone(), value.clone());
                     }
                     items
                 })
@@ -459,7 +459,7 @@ impl Playlist {
                 let mut items: BTreeMap<String, String> = BTreeMap::new();
                 for (name, index) in header_map {
                     let value = &record[*index];
-                    items.insert(name.to_string(), value.to_string());
+                    items.insert(name.clone(), value.to_string());
                 }
                 items
             })

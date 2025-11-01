@@ -32,7 +32,7 @@ pub fn read_rekordbox_txt(
                 if artist.is_empty() && title.is_empty() {
                     None
                 } else {
-                    Some(Track::new(artist.to_string(), title.to_string()))
+                    Some(Track::new(artist.clone(), title.clone()))
                 }
             })
             .collect()
