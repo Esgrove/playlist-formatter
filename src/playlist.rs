@@ -222,23 +222,20 @@ impl Playlist {
     /// After that, it will try the get the directory of the input file.
     /// Otherwise, returns an empty path so the file will go to the current working directory.
     fn default_save_dir(&self) -> PathBuf {
-        utils::dropbox_save_dir().map_or_else(
-            || {
-                dunce::canonicalize(&self.file).map_or_else(
-                    |error| {
-                        log::error!("Failed to resolve full path to input file: {error}");
-                        env::current_dir().unwrap_or_else(|_| PathBuf::new())
-                    },
-                    |path| {
-                        path.parent().map_or_else(
-                            || env::current_dir().unwrap_or_else(|_| PathBuf::new()),
-                            Path::to_path_buf,
-                        )
-                    },
-                )
-            },
-            |dir| dir,
-        )
+        utils::dropbox_save_dir().unwrap_or_else(|| {
+            dunce::canonicalize(&self.file).map_or_else(
+                |error| {
+                    log::error!("Failed to resolve full path to input file: {error}");
+                    env::current_dir().unwrap_or_else(|_| PathBuf::new())
+                },
+                |path| {
+                    path.parent().map_or_else(
+                        || env::current_dir().unwrap_or_else(|_| PathBuf::new()),
+                        Path::to_path_buf,
+                    )
+                },
+            )
+        })
     }
 
     /// Write tracks to CSV file
