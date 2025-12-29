@@ -23,6 +23,9 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # Override target-cpu=native from .cargo/config.toml to avoid illegal instruction
+  # errors on GitHub Actions runners with varying CPU capabilities
+  RUSTFLAGS: ""
 
 jobs:
   build:
