@@ -549,9 +549,9 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "rust_xlsxwriter"
-version = "0.92.2"
+version = "0.92.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8b9faf2c68874f865272c92493e9bb811e5fdff197a56ecc4748885ec5a874"
+checksum = "0733a44f344e900c4221f33a16aa92a59e3e7c7ad37d39a1c753afecb1f2bd02"
 dependencies = [
  "chrono",
  "zip",
