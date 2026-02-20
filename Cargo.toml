@@ -14,7 +14,7 @@ rust-version = "1.90"
 [dependencies]
 anyhow = "1.0.101"
 chrono = "0.4.43"
-clap = { version = "4.5.59", features = ["derive"] }
+clap = { version = "4.5.60", features = ["derive"] }
 colored = "3.1.1"
 csv = "1.4.0"
 dunce = "1.0.5"
