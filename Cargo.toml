@@ -22,7 +22,7 @@ encoding_rs_io = "0.1.7"
 env_logger = "0.11.11"
 home = "0.5.12"
 log = "0.4.33"
-regex = "1.12.4"
+regex = "1.13.0"
 rust_xlsxwriter = { version = "0.96.0", features = ["chrono"] }
 strum = { version = "0.28.0", features = ["derive"] }
 strum_macros = "0.28.0"
